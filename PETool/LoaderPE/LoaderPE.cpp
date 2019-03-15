@@ -72,7 +72,7 @@ BOOL CLoaderPE::IsPeFile()
 
 PIMAGE_NT_HEADERS CLoaderPE::GetNtHeader()
 {
-	return (PIMAGE_NT_HEADERS)((DWORD)lpBuffer+GetDosHeader()->e_lfanew);
+	return (PIMAGE_NT_HEADERS)((CHAR*)lpBuffer + GetDosHeader()->e_lfanew);
 }
 
 PIMAGE_FILE_HEADER CLoaderPE::GetPeHeader()
@@ -93,5 +93,14 @@ PIMAGE_DATA_DIRECTORY CLoaderPE::GetDataDir()
 
 PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 {
-	return (PIMAGE_SECTION_HEADER)((DWORD)(&GetOperHeader()->Magic) + GetPeHeader()->SizeOfOptionalHeader)+ nIndex;
+	CHAR* cBuf = (CHAR*)&GetOperHeader()->Magic;
+	WORD wSOP = GetPeHeader()->SizeOfOptionalHeader;
+	CHAR* wdd = cBuf + wSOP;
+	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader)+ nIndex;
+}
+
+PDWORD CLoaderPE::GetSectionValue(int nIndex)
+{
+	PDWORD p = &GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData;
+	return 0;
 }
