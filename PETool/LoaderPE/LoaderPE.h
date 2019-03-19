@@ -23,12 +23,20 @@ public:
 	PIMAGE_DATA_DIRECTORY GetDataDir();
 	//获取单个节表;nIndex : 第几个节表
 	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 0);
+	VOID FileBuffCopyInImageBuff();
+
 private:
 	HFILE			hFile;
 	OFSTRUCT		OpenBuff;
 	LARGE_INTEGER	FileSize;
 	LPVOID			lpBuffer;
+	LPVOID			lpImageBuffer;
 	DWORD			dLen;
 	DWORD			dFileLen;
 	PCHAR			pImgBuffer;
+
+public:
+	PIMAGE_DOS_HEADER		pImageDosHeader;
+	PIMAGE_NT_HEADERS		pImageNTHeader;
+	PIMAGE_SECTION_HEADER	pImageSectionHeader;
 };
