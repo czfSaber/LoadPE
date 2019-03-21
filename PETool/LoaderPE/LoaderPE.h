@@ -39,4 +39,6 @@ public:
 	PIMAGE_DOS_HEADER		pImageDosHeader;
 	PIMAGE_NT_HEADERS		pImageNTHeader;
 	PIMAGE_SECTION_HEADER	pImageSectionHeader;
+	PIMAGE_FILE_HEADER		pImageFileHeader;
+	PIMAGE_OPTIONAL_HEADER	pImageOperFileHeader;
 };

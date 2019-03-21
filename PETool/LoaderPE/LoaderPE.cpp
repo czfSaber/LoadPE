@@ -10,6 +10,8 @@ CLoaderPE::CLoaderPE()
 	pImageDosHeader			= NULL;
 	pImageNTHeader			= NULL;
 	pImageSectionHeader		= NULL;
+	pImageFileHeader		= NULL;
+	pImageOperFileHeader	= NULL;
 }
 
 CLoaderPE::CLoaderPE(LPCSTR lpFileName)
@@ -58,6 +60,12 @@ CLoaderPE::~CLoaderPE()
 		free(pImgBuffer);
 		pImgBuffer = NULL;
 	}
+
+	pImageDosHeader = NULL;
+	pImageNTHeader = NULL;
+	pImageSectionHeader = NULL;
+	pImageFileHeader = NULL;
+	pImageOperFileHeader = NULL;
 }
 
 PIMAGE_DOS_HEADER CLoaderPE::GetDosHeader()
@@ -105,7 +113,7 @@ VOID CLoaderPE::FileBuffCopyInImageBuff()
 	lpImageBuffer = VirtualAlloc(NULL, GetOperHeader()->SizeOfImage, MEM_COMMIT, PAGE_READWRITE);
 	if (lpImageBuffer == NULL)
 	{
-		printf(TEXT("VirtualAlloc failed.\n"));
+		printf("VirtualAlloc failed.\n");
 		return ;
 	}
 	//把文件头拷过去
@@ -117,15 +125,14 @@ VOID CLoaderPE::FileBuffCopyInImageBuff()
 		{
 			continue;
 		}
-		CHAR* cDemo = (CHAR*)lpImageBuffer + GetSectionHeader(i)->VirtualAddress;
-		CHAR* cDemo1 = (CHAR*)lpBuffer + GetSectionHeader(i)->PointerToRawData;
 		//把节的内容拷过去
-		memcpy((LPVOID)((CHAR)lpImageBuffer + GetSectionHeader(i)->VirtualAddress), (LPVOID)((CHAR)lpBuffer+GetSectionHeader(i)->PointerToRawData), 
+		memcpy((LPVOID)((CHAR*)lpImageBuffer + GetSectionHeader(i)->VirtualAddress), (LPVOID)((CHAR*)lpBuffer+GetSectionHeader(i)->PointerToRawData),
 			GetSectionHeader(i)->SizeOfRawData);
 	}
 	//重定向新的头
 	pImageDosHeader = (PIMAGE_DOS_HEADER)lpImageBuffer;
-	pImageNTHeader = (PIMAGE_NT_HEADERS)lpImageBuffer + pImageDosHeader->e_lfanew;
-	pImageSectionHeader = (PIMAGE_SECTION_HEADER)lpImageBuffer + sizeof(IMAGE_NT_HEADERS);
+	pImageNTHeader = (PIMAGE_NT_HEADERS)((CHAR*)lpImageBuffer + pImageDosHeader->e_lfanew);
+	pImageFileHeader = &pImageNTHeader->FileHeader;
+	pImageOperFileHeader = &pImageNTHeader->OptionalHeader;
+	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic+ pImageFileHeader->SizeOfOptionalHeader);
 }
-
