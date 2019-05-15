@@ -6,6 +6,8 @@ CLoaderPE::CLoaderPE()
 	hFile		= NULL;
 	pImgBuffer	= NULL;
 	dLen		= 0;
+	lpImageBuffer = NULL;
+	lpNewFileBuff = NULL;
 
 	pImageDosHeader			= NULL;
 	pImageNTHeader			= NULL;
@@ -43,6 +45,7 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
+	CloseHandle((HANDLE)hFile);
 }
 
 CLoaderPE::~CLoaderPE()
@@ -108,13 +111,13 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
 }
 
-VOID CLoaderPE::FileBuffCopyInImageBuff()
+LPVOID CLoaderPE::FileBuffCopyInImageBuff()
 {
 	lpImageBuffer = VirtualAlloc(NULL, GetOperHeader()->SizeOfImage, MEM_COMMIT, PAGE_READWRITE);
 	if (lpImageBuffer == NULL)
 	{
 		printf("VirtualAlloc failed.\n");
-		return ;
+		return NULL;
 	}
 	//把文件头拷过去
 	memcpy(lpImageBuffer, lpBuffer, GetOperHeader()->SizeOfHeaders);
@@ -135,4 +138,34 @@ VOID CLoaderPE::FileBuffCopyInImageBuff()
 	pImageFileHeader = &pImageNTHeader->FileHeader;
 	pImageOperFileHeader = &pImageNTHeader->OptionalHeader;
 	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic+ pImageFileHeader->SizeOfOptionalHeader);
+	
+	return lpImageBuffer;
 }
+
+LPVOID CLoaderPE::ImageBuffToFileBuff()
+{
+	//如果内存中没内容，直接退出
+	if (lpImageBuffer == NULL)
+	{
+		printf("lpImageBuffer is null");
+		return NULL;
+	}
+
+	lpNewFileBuff = VirtualAlloc(NULL, strlen((CHAR*)lpBuffer), MEM_COMMIT, PAGE_READWRITE);
+	if (lpNewFileBuff == NULL)
+	{
+		printf("VirtualAlloc failed.\n");
+		return NULL;
+	}
+
+	memcpy(lpNewFileBuff, lpImageBuffer, pImageOperFileHeader->SizeOfHeaders);
+
+	for (int i = 0; i < pImageFileHeader->NumberOfSections; ++i)
+	{
+		memcpy((LPVOID)((CHAR*)lpNewFileBuff + (pImageSectionHeader + i)->PointerToRawData), (LPVOID)((CHAR*)lpImageBuffer + (pImageSectionHeader + i)->VirtualAddress),
+			(pImageSectionHeader + i)->SizeOfRawData);
+	}
+
+	return NULL;
+}
+

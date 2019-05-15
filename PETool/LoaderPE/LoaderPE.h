@@ -23,14 +23,18 @@ public:
 	PIMAGE_DATA_DIRECTORY GetDataDir();
 	//获取单个节表;nIndex : 第几个节表
 	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 0);
-	VOID FileBuffCopyInImageBuff();
+	//硬盘拷贝到内存
+	LPVOID FileBuffCopyInImageBuff();
+	//内存拷贝到硬盘
+	LPVOID ImageBuffToFileBuff();
 
 private:
 	HFILE			hFile;
 	OFSTRUCT		OpenBuff;
 	LARGE_INTEGER	FileSize;
-	LPVOID			lpBuffer;
-	LPVOID			lpImageBuffer;
+	LPVOID			lpBuffer;		//硬盘中的文件
+	LPVOID			lpImageBuffer;	//内存中的文件
+	LPVOID			lpNewFileBuff;	//内存中的文件
 	DWORD			dLen;
 	DWORD			dFileLen;
 	PCHAR			pImgBuffer;
