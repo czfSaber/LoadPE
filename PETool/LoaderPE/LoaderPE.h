@@ -27,6 +27,8 @@ public:
 	LPVOID FileBuffCopyInImageBuff();
 	//内存拷贝到硬盘
 	LPVOID ImageBuffToFileBuff();
+	//获得节剩余空间的大小
+	INT GetNULLSectionSize(int nIndex = 0);
 
 private:
 	HFILE			hFile;

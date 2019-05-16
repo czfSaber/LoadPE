@@ -50,7 +50,6 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 
 CLoaderPE::~CLoaderPE()
 {
-	CloseHandle((HANDLE)hFile);
 	hFile = NULL;
 	if (lpBuffer != NULL)
 	{
@@ -167,5 +166,10 @@ LPVOID CLoaderPE::ImageBuffToFileBuff()
 	}
 
 	return NULL;
+}
+
+INT CLoaderPE::GetNULLSectionSize(int nIndex)
+{
+	return GetSectionHeader(nIndex)->SizeOfRawData - GetSectionHeader(nIndex)->Misc.VirtualSize;
 }
 
