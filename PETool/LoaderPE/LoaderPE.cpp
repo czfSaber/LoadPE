@@ -168,8 +168,27 @@ LPVOID CLoaderPE::ImageBuffToFileBuff()
 	return NULL;
 }
 
-INT CLoaderPE::GetNULLSectionSize(int nIndex)
+INT CLoaderPE::GetRemainingSize(int nIndex)
 {
-	return GetSectionHeader(nIndex)->SizeOfRawData - GetSectionHeader(nIndex)->Misc.VirtualSize;
+	int nNum = 0;
+	//因为指针是从0开始计算的，所以这里要减一个
+	for (int i = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - 1; i > GetSectionHeader(nIndex)->PointerToRawData; --i)
+	{
+		if (*((CHAR*)lpBuffer + i) == 0)
+		{
+			nNum++;
+		}
+		else
+		{
+			return nNum;
+		}
+	}
+	return nNum;
+}
+
+BOOL CLoaderPE::AddSection(TCHAR szName)
+{
+	
+	return TRUE;
 }
 

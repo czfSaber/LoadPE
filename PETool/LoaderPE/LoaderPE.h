@@ -1,7 +1,6 @@
 #pragma once
 #include <windows.h>
 #include <strsafe.h>
-#include <vector>
 
 class CLoaderPE
 {
@@ -28,7 +27,10 @@ public:
 	//内存拷贝到硬盘
 	LPVOID ImageBuffToFileBuff();
 	//获得节剩余空间的大小
-	INT GetNULLSectionSize(int nIndex = 0);
+	INT GetRemainingSize(int nIndex = 0);
+	//添加节;In:节的名字
+	BOOL AddSection(CHAR szName);
+	//获取空白的节
 
 private:
 	HFILE			hFile;
