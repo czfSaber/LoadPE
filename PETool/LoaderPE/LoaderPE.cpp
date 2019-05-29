@@ -131,12 +131,8 @@ LPVOID CLoaderPE::FileBuffCopyInImageBuff()
 		memcpy((LPVOID)((CHAR*)lpImageBuffer + GetSectionHeader(i)->VirtualAddress), (LPVOID)((CHAR*)lpBuffer+GetSectionHeader(i)->PointerToRawData),
 			GetSectionHeader(i)->SizeOfRawData);
 	}
-	//重定向新的头
-	pImageDosHeader = (PIMAGE_DOS_HEADER)lpImageBuffer;
-	pImageNTHeader = (PIMAGE_NT_HEADERS)((CHAR*)lpImageBuffer + pImageDosHeader->e_lfanew);
-	pImageFileHeader = &pImageNTHeader->FileHeader;
-	pImageOperFileHeader = &pImageNTHeader->OptionalHeader;
-	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic+ pImageFileHeader->SizeOfOptionalHeader);
+	
+	RedirectHelder();
 	
 	return lpImageBuffer;
 }
@@ -186,9 +182,27 @@ INT CLoaderPE::GetRemainingSize(int nIndex)
 	return nNum;
 }
 
-BOOL CLoaderPE::AddSection(TCHAR szName)
+BOOL CLoaderPE::AddSection(CHAR* szName,int nSize)
 {
-	
+	realloc(lpImageBuffer, nSize);
+	//随便把一个节表复制到总节表的下一个位置
+	strcpy((CHAR*)pImageSectionHeader + pImageFileHeader->SizeOfOptionalHeader + 1, (CHAR*)pImageSectionHeader + 0);
+
+	PIMAGE_SECTION_HEADER pSectionHeaderBak = pImageSectionHeader + (pImageFileHeader->SizeOfOptionalHeader + 1);
+	//修改节的数量
+	pImageFileHeader->SizeOfOptionalHeader += 1;
+	//修改节表
+	strcpy((CHAR*)pSectionHeaderBak->Name, szName);
+
 	return TRUE;
+}
+
+void CLoaderPE::RedirectHelder()
+{
+	pImageDosHeader = (PIMAGE_DOS_HEADER)lpImageBuffer;
+	pImageNTHeader = (PIMAGE_NT_HEADERS)((CHAR*)lpImageBuffer + pImageDosHeader->e_lfanew);
+	pImageFileHeader = &pImageNTHeader->FileHeader;
+	pImageOperFileHeader = &pImageNTHeader->OptionalHeader;
+	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic + pImageFileHeader->SizeOfOptionalHeader);
 }
 

@@ -29,8 +29,9 @@ public:
 	//获得节剩余空间的大小
 	INT GetRemainingSize(int nIndex = 0);
 	//添加节;In:节的名字
-	BOOL AddSection(CHAR szName);
-	//获取空白的节
+	BOOL AddSection(CHAR* szName,int nSize = 4096);
+	//重定向头
+	void RedirectHelder();
 
 private:
 	HFILE			hFile;
