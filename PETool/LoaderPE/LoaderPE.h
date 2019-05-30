@@ -32,9 +32,11 @@ public:
 	BOOL AddSection(CHAR* szName,int nSize = 4096);
 	//重定向头
 	void RedirectHelder();
+	//保存文件
+	BOOL SaveFile(TCHAR* szBuff, TCHAR* szName);
 
 private:
-	HFILE			hFile;
+	HANDLE			hFile;
 	OFSTRUCT		OpenBuff;
 	LARGE_INTEGER	FileSize;
 	LPVOID			lpBuffer;		//硬盘中的文件

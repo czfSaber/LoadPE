@@ -18,20 +18,19 @@ CLoaderPE::CLoaderPE()
 
 CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 {
-	hFile = OpenFile(lpFileName, &OpenBuff, OF_READWRITE);
-	if (hFile == HFILE_ERROR)
+	if (OpenFile(lpFileName, &OpenBuff, OF_READWRITE) == HFILE_ERROR)
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
 		StringCchPrintf(szError, MAX_PATH, TEXT("OpenFile is Error,Error Id: %d"), GetLastError());
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
-	SetFilePointer((HANDLE)hFile, NULL, NULL, FILE_BEGIN);
+	SetFilePointer(hFile, NULL, NULL, FILE_BEGIN);
 
-	dFileLen = GetFileSize((HANDLE)hFile, &dLen);
+	dFileLen = GetFileSize(hFile, &dLen);
 
 	lpBuffer = malloc(dFileLen);
-	if (!ReadFile((HANDLE)hFile, lpBuffer, dFileLen, &dLen, NULL))
+	if (!ReadFile(hFile, lpBuffer, dFileLen, &dLen, NULL))
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
 		StringCchPrintf(szError, MAX_PATH, TEXT("ReadFile is Error,Error Id: %d"), GetLastError());
@@ -45,7 +44,7 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
-	CloseHandle((HANDLE)hFile);
+	CloseHandle(hFile);
 }
 
 CLoaderPE::~CLoaderPE()
@@ -186,13 +185,12 @@ BOOL CLoaderPE::AddSection(CHAR* szName,int nSize)
 {
 	realloc(lpImageBuffer, nSize);
 	//随便把一个节表复制到总节表的下一个位置
-	strcpy((CHAR*)pImageSectionHeader + pImageFileHeader->SizeOfOptionalHeader + 1, (CHAR*)pImageSectionHeader + 0);
-
+	strcpy_s((CHAR*)pImageSectionHeader + pImageFileHeader->SizeOfOptionalHeader + 1,sizeof(IMAGE_SECTION_HEADER), (CHAR*)pImageSectionHeader + 0);
 	PIMAGE_SECTION_HEADER pSectionHeaderBak = pImageSectionHeader + (pImageFileHeader->SizeOfOptionalHeader + 1);
 	//修改节的数量
 	pImageFileHeader->SizeOfOptionalHeader += 1;
 	//修改节表
-	strcpy((CHAR*)pSectionHeaderBak->Name, szName);
+	strcpy_s((CHAR*)pSectionHeaderBak->Name, IMAGE_SIZEOF_SHORT_NAME, szName);
 
 	return TRUE;
 }
@@ -206,3 +204,19 @@ void CLoaderPE::RedirectHelder()
 	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic + pImageFileHeader->SizeOfOptionalHeader);
 }
 
+BOOL CLoaderPE::SaveFile(TCHAR* szBuff, TCHAR* szName)
+{
+	hFile = CreateFile(szName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		LPTSTR buf;
+		FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, GetLastError(),
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&buf, 0, NULL);
+		MessageBox(NULL, (LPCWSTR)buf, TEXT("FileError"), MB_OK);
+		return FALSE;
+	}
+	WriteFile(hFile, lpImageBuffer, strlen((CHAR*)lpImageBuffer + 1), NULL, NULL);
+	FlushFileBuffers(hFile);
+	CloseHandle(hFile);
+	return TRUE;
+}
