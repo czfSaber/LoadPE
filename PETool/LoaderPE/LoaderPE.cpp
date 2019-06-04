@@ -18,19 +18,19 @@ CLoaderPE::CLoaderPE()
 
 CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 {
-	if (OpenFile(lpFileName, &OpenBuff, OF_READWRITE) == HFILE_ERROR)
+	if ((hFile = OpenFile(lpFileName, &OpenBuff, OF_READWRITE)) == HFILE_ERROR)
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
 		StringCchPrintf(szError, MAX_PATH, TEXT("OpenFile is Error,Error Id: %d"), GetLastError());
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
-	SetFilePointer(hFile, NULL, NULL, FILE_BEGIN);
+	SetFilePointer((HANDLE)hFile, NULL, NULL, FILE_BEGIN);
 
-	dFileLen = GetFileSize(hFile, &dLen);
+	dFileLen = GetFileSize((HANDLE)hFile, &dLen);
 
 	lpBuffer = malloc(dFileLen);
-	if (!ReadFile(hFile, lpBuffer, dFileLen, &dLen, NULL))
+	if (!ReadFile((HANDLE)hFile, lpBuffer, dFileLen, &dLen, NULL))
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
 		StringCchPrintf(szError, MAX_PATH, TEXT("ReadFile is Error,Error Id: %d"), GetLastError());
@@ -44,7 +44,7 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
-	CloseHandle(hFile);
+	CloseHandle((HANDLE)hFile);
 }
 
 CLoaderPE::~CLoaderPE()
@@ -109,13 +109,13 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
 }
 
-LPVOID CLoaderPE::FileBuffCopyInImageBuff()
+BOOL CLoaderPE::FileBuffCopyInImageBuff()
 {
 	lpImageBuffer = VirtualAlloc(NULL, GetOperHeader()->SizeOfImage, MEM_COMMIT, PAGE_READWRITE);
 	if (lpImageBuffer == NULL)
 	{
 		printf("VirtualAlloc failed.\n");
-		return NULL;
+		return FALSE;
 	}
 	//把文件头拷过去
 	memcpy(lpImageBuffer, lpBuffer, GetOperHeader()->SizeOfHeaders);
@@ -133,23 +133,23 @@ LPVOID CLoaderPE::FileBuffCopyInImageBuff()
 	
 	RedirectHelder();
 	
-	return lpImageBuffer;
+	return TRUE;
 }
 
-LPVOID CLoaderPE::ImageBuffToFileBuff()
+BOOL CLoaderPE::ImageBuffToFileBuff()
 {
 	//如果内存中没内容，直接退出
 	if (lpImageBuffer == NULL)
 	{
 		printf("lpImageBuffer is null");
-		return NULL;
+		return FALSE;
 	}
 
 	lpNewFileBuff = VirtualAlloc(NULL, strlen((CHAR*)lpBuffer), MEM_COMMIT, PAGE_READWRITE);
 	if (lpNewFileBuff == NULL)
 	{
 		printf("VirtualAlloc failed.\n");
-		return NULL;
+		return FALSE;
 	}
 
 	memcpy(lpNewFileBuff, lpImageBuffer, pImageOperFileHeader->SizeOfHeaders);
@@ -160,7 +160,7 @@ LPVOID CLoaderPE::ImageBuffToFileBuff()
 			(pImageSectionHeader + i)->SizeOfRawData);
 	}
 
-	return NULL;
+	return TRUE;
 }
 
 INT CLoaderPE::GetRemainingSize(int nIndex)
@@ -181,17 +181,28 @@ INT CLoaderPE::GetRemainingSize(int nIndex)
 	return nNum;
 }
 
-BOOL CLoaderPE::AddSection(CHAR* szName,int nSize)
+BOOL CLoaderPE::AddSection(LPCSTR szName,int nSize)
 {
+	if (lpImageBuffer == NULL)
+	{
+		FileBuffCopyInImageBuff();
+	}
 	realloc(lpImageBuffer, nSize);
-	//随便把一个节表复制到总节表的下一个位置
-	strcpy_s((CHAR*)pImageSectionHeader + pImageFileHeader->SizeOfOptionalHeader + 1,sizeof(IMAGE_SECTION_HEADER), (CHAR*)pImageSectionHeader + 0);
-	PIMAGE_SECTION_HEADER pSectionHeaderBak = pImageSectionHeader + (pImageFileHeader->SizeOfOptionalHeader + 1);
+	//节表的总数
+	int NumberSection = pImageFileHeader->NumberOfSections;
+	//把最后一个节节表复制到它下一个位置
+	strcpy_s((CHAR*)pImageSectionHeader + NumberSection + 1, sizeof(IMAGE_SECTION_HEADER), (CHAR*)pImageSectionHeader + NumberSection);
+	PIMAGE_SECTION_HEADER pSectionHeaderBak = pImageSectionHeader + (pImageFileHeader->NumberOfSections + 1);
 	//修改节的数量
-	pImageFileHeader->SizeOfOptionalHeader += 1;
+	pImageFileHeader->NumberOfSections += 1;
+	//修改拉伸后的大小
+	pImageOperFileHeader->SizeOfImage += nSize;
 	//修改节表
 	strcpy_s((CHAR*)pSectionHeaderBak->Name, IMAGE_SIZEOF_SHORT_NAME, szName);
-
+	pSectionHeaderBak->Misc.VirtualSize = nSize;
+	pSectionHeaderBak->SizeOfRawData = nSize;
+	pSectionHeaderBak->VirtualAddress += pSectionHeaderBak->SizeOfRawData;
+	pSectionHeaderBak->PointerToRawData += (pImageSectionHeader + NumberSection)->SizeOfRawData;
 	return TRUE;
 }
 
@@ -204,10 +215,10 @@ void CLoaderPE::RedirectHelder()
 	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic + pImageFileHeader->SizeOfOptionalHeader);
 }
 
-BOOL CLoaderPE::SaveFile(TCHAR* szBuff, TCHAR* szName)
+BOOL CLoaderPE::SaveFile(LPCSTR szBuff, LPCWSTR szName)
 {
-	hFile = CreateFile(szName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile == INVALID_HANDLE_VALUE)
+	hFile = (HFILE)CreateFile(szName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if ((HANDLE)hFile == INVALID_HANDLE_VALUE)
 	{
 		LPTSTR buf;
 		FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, GetLastError(),
@@ -215,8 +226,18 @@ BOOL CLoaderPE::SaveFile(TCHAR* szBuff, TCHAR* szName)
 		MessageBox(NULL, (LPCWSTR)buf, TEXT("FileError"), MB_OK);
 		return FALSE;
 	}
-	WriteFile(hFile, lpImageBuffer, strlen((CHAR*)lpImageBuffer + 1), NULL, NULL);
-	FlushFileBuffers(hFile);
-	CloseHandle(hFile);
+	if (FALSE == WriteFile((HANDLE)hFile, lpImageBuffer, strlen((CHAR*)lpImageBuffer + 1), NULL, NULL))
+	{
+		TCHAR szError[MAX_PATH] = { 0 };
+		StringCchPrintf(szError, MAX_PATH, TEXT("WriteFile is Error,Error Id: %d"), GetLastError());
+		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
+	}
+	if (FALSE == FlushFileBuffers((HANDLE)hFile))
+	{
+		TCHAR szError[MAX_PATH] = { 0 };
+		StringCchPrintf(szError, MAX_PATH, TEXT("FlushFileBuffers is Error,Error Id: %d"), GetLastError());
+		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
+	}
+	CloseHandle((HANDLE)hFile);
 	return TRUE;
 }

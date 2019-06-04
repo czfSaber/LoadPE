@@ -4,16 +4,11 @@ using namespace std;
 
 int main()
 {
-	CLoaderPE *Pe = new  CLoaderPE("K:\\game.exe");
-	Pe->FileBuffCopyInImageBuff();
-	printf("%s\n", Pe->pImageSectionHeader->Name);
-	/*printf("节的数量：%d\n", Pe->GetOperHeader()->NumberOfRvaAndSizes);
-	printf("ImageBase：%X\n", Pe->GetOperHeader()->ImageBase);
-	printf("%s\n", Pe->GetSectionHeader(1)->Name);
-	printf("VirtualSize == 0x%X\n", Pe->GetSectionHeader(1)->Misc.VirtualSize);
-	printf("0x%X\n", Pe->GetSectionHeader(1)->PointerToRawData);
-	printf("0x%X\n", Pe->GetSectionHeader(1)->SizeOfRawData);*/
-	delete Pe;
+	CLoaderPE *peTool = new  CLoaderPE("C:\\Users\\Saber\\Desktop\\PiggyStressTestClient.exe");
+	peTool->FileBuffCopyInImageBuff();
+	//peTool->AddSection(".test");
+	peTool->SaveFile((LPCSTR)peTool->GetHardDiskFile(),TEXT("C:\\Users\\Saber\\Desktop\\1.exe"));
+	delete peTool;
 	system("pause");
 	return 0;
 }
