@@ -23,20 +23,27 @@ public:
 	//获取单个节表;nIndex : 第几个节表
 	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 0);
 	//硬盘拷贝到内存
-	LPVOID FileBuffCopyInImageBuff();
+	BOOL FileBuffCopyInImageBuff();
 	//内存拷贝到硬盘
-	LPVOID ImageBuffToFileBuff();
+	BOOL ImageBuffToFileBuff();
 	//获得节剩余空间的大小
 	INT GetRemainingSize(int nIndex = 0);
 	//添加节;In:节的名字
-	BOOL AddSection(CHAR* szName,int nSize = 4096);
+	BOOL AddSection(LPCSTR szName,int nSize = 0x1000);
 	//重定向头
 	void RedirectHelder();
 	//保存文件
-	BOOL SaveFile(TCHAR* szBuff, TCHAR* szName);
-
+	BOOL SaveFile(LPCSTR szBuff, LPCWSTR szName);
+	//获得硬盘中拉伸后的文件
+	LPVOID GetHardDiskFile() {
+		return lpImageBuffer;
+	}
+	//获得最新内存文件
+	LPVOID GetNewFile() {
+		return lpNewFileBuff;
+	}
 private:
-	HANDLE			hFile;
+	HFILE			hFile;
 	OFSTRUCT		OpenBuff;
 	LARGE_INTEGER	FileSize;
 	LPVOID			lpBuffer;		//硬盘中的文件
