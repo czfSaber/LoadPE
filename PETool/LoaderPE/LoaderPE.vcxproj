@@ -115,9 +115,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Encode.h" />
     <ClInclude Include="LoaderPE.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Encode.cpp" />
     <ClCompile Include="LoaderPE.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
