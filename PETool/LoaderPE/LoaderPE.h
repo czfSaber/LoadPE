@@ -33,7 +33,7 @@ public:
 	//重定向头
 	void RedirectHelder();
 	//保存文件
-	BOOL SaveFile(LPCSTR szBuff, LPCWSTR szName);
+	BOOL SaveFile(LPCSTR szBuff, LPCSTR szName);
 	//获得硬盘中拉伸后的文件
 	LPVOID GetHardDiskFile() {
 		return lpImageBuffer;
@@ -42,13 +42,14 @@ public:
 	LPVOID GetNewFile() {
 		return lpNewFileBuff;
 	}
+public:
+	LPVOID			lpBuffer;		//硬盘中的文件
+	LPVOID			lpImageBuffer;	//内存中的文件
+	LPVOID			lpNewFileBuff;	//内存中的文件
 private:
 	HFILE			hFile;
 	OFSTRUCT		OpenBuff;
 	LARGE_INTEGER	FileSize;
-	LPVOID			lpBuffer;		//硬盘中的文件
-	LPVOID			lpImageBuffer;	//内存中的文件
-	LPVOID			lpNewFileBuff;	//内存中的文件
 	DWORD			dLen;
 	DWORD			dFileLen;
 	PCHAR			pImgBuffer;
@@ -60,3 +61,5 @@ public:
 	PIMAGE_FILE_HEADER		pImageFileHeader;
 	PIMAGE_OPTIONAL_HEADER	pImageOperFileHeader;
 };
+// 要申请内存的指针，申请大小，需要扩展的申请大小
+LPVOID rMalloc(LPVOID ptr, SIZE_T nOldSize,SIZE_T nNewSize = 0);
