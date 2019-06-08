@@ -34,14 +34,7 @@ public:
 	void RedirectHelder();
 	//保存文件
 	BOOL SaveFile(LPCSTR szBuff, LPCSTR szName);
-	//获得硬盘中拉伸后的文件
-	LPVOID GetHardDiskFile() {
-		return lpImageBuffer;
-	}
-	//获得最新内存文件
-	LPVOID GetNewFile() {
-		return lpNewFileBuff;
-	}
+	
 public:
 	LPVOID			lpBuffer;		//硬盘中的文件
 	LPVOID			lpImageBuffer;	//内存中的文件
