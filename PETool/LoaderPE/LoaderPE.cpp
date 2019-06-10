@@ -15,10 +15,12 @@ CLoaderPE::CLoaderPE()
 	pImageSectionHeader		= NULL;
 	pImageFileHeader		= NULL;
 	pImageOperFileHeader	= NULL;
+	mSectionName.clear();
 }
 
 CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 {
+	CLoaderPE();
 	if ((hFile = OpenFile(lpFileName, &OpenBuff, OF_READWRITE)) == HFILE_ERROR)
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
@@ -46,6 +48,14 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 		return;
 	}
 	CloseHandle((HANDLE)hFile);
+}
+
+void CLoaderPE::SaveSectionName()
+{
+	for (int i = 0; i < GetPeHeader()->NumberOfSections; ++i)
+	{
+		mSectionName.insert(pair<BYTE*, BOOL>(GetSectionHeader(i)->Name,TRUE));
+	}
 }
 
 CLoaderPE::~CLoaderPE()
@@ -183,9 +193,14 @@ INT CLoaderPE::GetRemainingSize(int nIndex)
 	return nNum;
 }
 
-BOOL CLoaderPE::AddSection(LPCSTR szName,int nSize)
+BOOL CLoaderPE::AddSection(LPCSTR szName, SIZE_T nSize)
 {
-
+	SaveSectionName();
+	if (!IsSectionName((BYTE*)szName))
+	{
+		MessageBox(NULL, TEXT("Error"), TEXT("SectionName is Repetition"), MB_OK);
+		return FALSE;
+	}
 	lpBuffer = rMalloc(lpBuffer, dFileLen,nSize);
 	//节的总数。
 	int NumberSection = GetPeHeader()->NumberOfSections;
@@ -199,7 +214,9 @@ BOOL CLoaderPE::AddSection(LPCSTR szName,int nSize)
 	strcpy_s((CHAR*)GetSectionHeader(NumberSection)->Name, IMAGE_SIZEOF_SHORT_NAME, szName);
 	GetSectionHeader(NumberSection)->Misc.VirtualSize = nSize;
 	GetSectionHeader(NumberSection)->SizeOfRawData = nSize;
-	GetSectionHeader(NumberSection)->VirtualAddress += GetSectionHeader(NumberSection)->SizeOfRawData;
+	//取整
+	int nVirSize = GetSectionHeader(NumberSection - 1)->Misc.VirtualSize / 0x1000;
+	GetSectionHeader(NumberSection)->VirtualAddress += ((nVirSize + 1) * 0x1000);
 	GetSectionHeader(NumberSection)->PointerToRawData += GetSectionHeader(NumberSection - 1)->SizeOfRawData;
 	return TRUE;
 }
@@ -213,7 +230,7 @@ void CLoaderPE::RedirectHelder()
 	pImageSectionHeader = (PIMAGE_SECTION_HEADER)((CHAR*)&pImageOperFileHeader->Magic + pImageFileHeader->SizeOfOptionalHeader);
 }
 
-BOOL CLoaderPE::SaveFile(LPCSTR szBuff, LPCSTR szName)
+BOOL CLoaderPE::SaveFile(LPCSTR szBuff,INT nBufSize, LPCSTR szName)
 {
 #ifdef UNICODE
 	hFile = (HFILE)CreateFile(Encode::ctowc(szName), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -229,7 +246,7 @@ BOOL CLoaderPE::SaveFile(LPCSTR szBuff, LPCSTR szName)
 		MessageBox(NULL, buf, TEXT("FileError"), MB_OK);
 		return FALSE;
 	}
-	if (FALSE == WriteFile((HANDLE)hFile, szBuff, dFileLen, NULL, NULL))
+	if (FALSE == WriteFile((HANDLE)hFile, szBuff, nBufSize, NULL, NULL))
 	{
 		TCHAR szError[MAX_PATH] = { 0 };
 		StringCchPrintf(szError, MAX_PATH, TEXT("WriteFile is Error,Error Id: %d"), GetLastError());
@@ -245,20 +262,25 @@ BOOL CLoaderPE::SaveFile(LPCSTR szBuff, LPCSTR szName)
 	return TRUE;
 }
 
-LPVOID rMalloc(LPVOID ptr, SIZE_T nOldSize,SIZE_T nNewSize)
+LPVOID CLoaderPE::rMalloc(LPVOID ptr, INT nOldSize,INT nAddSize)
 {
-	int nSize = nOldSize + nNewSize;
+	nNewFileSize = (nAddSize += nOldSize);
 	//如果ptr等于空，说明是分配内存
 	if (ptr == NULL)
 	{
-		ptr = malloc(nSize);
+		ptr = malloc(nOldSize);
 		return ptr;
 	}
 	//否则是要修改原有内存的大小
-	LPVOID lpNewBuff = malloc(nSize);
-	memset(lpNewBuff, 0, nSize);
-	memcpy(lpNewBuff, ptr, nSize - nNewSize);
+	LPVOID lpNewBuff = malloc(nAddSize);
+	memset(lpNewBuff, 0, nAddSize);
+	memcpy(lpNewBuff, ptr, nOldSize);
 	free(ptr);
 	ptr = NULL;
 	return lpNewBuff;
+}
+
+BOOL CLoaderPE::IsSectionName(BYTE* bName)
+{
+	return mSectionName.find(bName)->second;
 }
