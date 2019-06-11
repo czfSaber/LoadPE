@@ -4,6 +4,13 @@
 #include <map>
 using namespace std;
 
+/************************************************************************/
+/*添加节：先看看文件头中有没有添加节表的空间，
+	如果没有把PE头以及以下的头全部头上移到dos头之后
+	要保证节表后面有两个节表的空间也就是80个字节。	
+*/
+/************************************************************************/
+
 class CLoaderPE
 {
 private:
@@ -35,13 +42,17 @@ public:
 	//添加节;In:节的名字
 	BOOL AddSection(LPCSTR szName, SIZE_T nSize = 0x1000);
 	//重定向头
-	void RedirectHelder();
+	void RedirectHeader();
 	//保存文件
 	BOOL SaveFile(LPCSTR szBuff,INT nBufSize, LPCSTR szName);
 	// 要申请内存的指针，申请大小，需要扩展的申请大小
 	LPVOID rMalloc(LPVOID ptr, INT nOldSize,INT nNewSize);
 	//判断节表名是否重复
 	BOOL IsSectionName(BYTE* bName);
+	//获得文件头空白大小
+	INT GetFileHeaderBlankSize();
+	//把文件头移到DOS头后边
+	VOID MoveHeaderForDOS();
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
 	LPVOID				lpImageBuffer;	//内存中的文件

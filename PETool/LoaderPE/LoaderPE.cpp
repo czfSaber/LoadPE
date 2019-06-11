@@ -47,6 +47,7 @@ CLoaderPE::CLoaderPE(LPCSTR lpFileName)
 		MessageBox(NULL, szError, TEXT("Error"), MB_OK);
 		return;
 	}
+	nNewFileSize = dFileLen;
 	CloseHandle((HANDLE)hFile);
 }
 
@@ -143,7 +144,7 @@ BOOL CLoaderPE::FileBuffCopyInImageBuff()
 			GetSectionHeader(i)->SizeOfRawData);
 	}
 
-	RedirectHelder();
+	RedirectHeader();
 	
 	return TRUE;
 }
@@ -195,7 +196,9 @@ INT CLoaderPE::GetRemainingSize(int nIndex)
 
 BOOL CLoaderPE::AddSection(LPCSTR szName, SIZE_T nSize)
 {
+	//先把节名字保存下来。
 	SaveSectionName();
+	//然后判断有没有重复的节名
 	if (!IsSectionName((BYTE*)szName))
 	{
 		MessageBox(NULL, TEXT("Error"), TEXT("SectionName is Repetition"), MB_OK);
@@ -221,7 +224,7 @@ BOOL CLoaderPE::AddSection(LPCSTR szName, SIZE_T nSize)
 	return TRUE;
 }
 
-void CLoaderPE::RedirectHelder()
+void CLoaderPE::RedirectHeader()
 {
 	pImageDosHeader = (PIMAGE_DOS_HEADER)lpImageBuffer;
 	pImageNTHeader = (PIMAGE_NT_HEADERS)((CHAR*)lpImageBuffer + pImageDosHeader->e_lfanew);
@@ -283,4 +286,15 @@ LPVOID CLoaderPE::rMalloc(LPVOID ptr, INT nOldSize,INT nAddSize)
 BOOL CLoaderPE::IsSectionName(BYTE* bName)
 {
 	return mSectionName.find(bName)->second;
+}
+
+INT CLoaderPE::GetFileHeaderBlankSize()
+{
+	return (CHAR*)lpBuffer + GetOperHeader()->SizeOfHeaders - (CHAR*)GetSectionHeader(GetPeHeader()->NumberOfSections);
+}
+
+VOID CLoaderPE::MoveHeaderForDOS()
+{
+	memmove((CHAR*)lpBuffer + sizeof(IMAGE_DOS_HEADER), (CHAR*)lpBuffer + GetDosHeader()->e_lfanew, sizeof(IMAGE_NT_HEADERS) + sizeof(IMAGE_SECTION_HEADER)*GetPeHeader()->NumberOfSections);
+	GetDosHeader()->e_lfanew = sizeof(IMAGE_DOS_HEADER);
 }
