@@ -5,7 +5,6 @@ CLoaderPE::CLoaderPE()
 {
 	lpBuffer	= NULL;
 	hFile		= NULL;
-	pImgBuffer	= NULL;
 	dLen		= 0;
 	lpImageBuffer = NULL;
 	lpNewFileBuff = NULL;
@@ -68,12 +67,6 @@ CLoaderPE::~CLoaderPE()
 		lpBuffer = NULL;
 	}
 
-	if (pImgBuffer != NULL)
-	{
-		free(pImgBuffer);
-		pImgBuffer = NULL;
-	}
-
 	pImageDosHeader = NULL;
 	pImageNTHeader = NULL;
 	pImageSectionHeader = NULL;
@@ -111,11 +104,6 @@ PIMAGE_OPTIONAL_HEADER CLoaderPE::GetOperHeader()
 	return &GetNtHeader()->OptionalHeader;
 }
 
-PIMAGE_DATA_DIRECTORY CLoaderPE::GetDataDir()
-{
-	return GetOperHeader()->DataDirectory;
-}
-
 PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 {
 	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
@@ -124,6 +112,7 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 BOOL CLoaderPE::FileBuffCopyInImageBuff()
 {
 	lpImageBuffer = malloc(GetOperHeader()->SizeOfImage);
+	memset(lpImageBuffer, 0, GetOperHeader()->SizeOfImage);
 	//lpImageBuffer = malloc(GetOperHeader()->SizeOfImage*2);
 	if (lpImageBuffer == NULL)
 	{
@@ -158,7 +147,8 @@ BOOL CLoaderPE::ImageBuffToFileBuff()
 		return FALSE;
 	}
 
-	lpNewFileBuff = malloc(dFileLen);
+	lpNewFileBuff = malloc(nNewFileSize);
+	memset(lpNewFileBuff, 0, nNewFileSize);
 	if (lpNewFileBuff == NULL)
 	{
 		printf("malloc failed.\n");
@@ -170,10 +160,10 @@ BOOL CLoaderPE::ImageBuffToFileBuff()
 	for (int i = 0; i < pImageFileHeader->NumberOfSections; ++i)
 	{
 		memcpy((LPVOID)((CHAR*)lpNewFileBuff + (pImageSectionHeader + i)->PointerToRawData), (LPVOID)((CHAR*)lpImageBuffer + (pImageSectionHeader + i)->VirtualAddress),
-			(pImageSectionHeader + i)->SizeOfRawData);
+			(pImageSectionHeader + i)->Misc.VirtualSize);
 	}
 
-	return TRUE;
+	return TRUE; 
 }
 
 INT CLoaderPE::GetRemainingSize(int nIndex)
@@ -199,7 +189,7 @@ BOOL CLoaderPE::AddSection(LPCSTR szName, SIZE_T nSize)
 	//先把节名字保存下来。
 	SaveSectionName();
 	//然后判断有没有重复的节名
-	if (!IsSectionName((BYTE*)szName))
+	if (IsSectionName((BYTE*)szName))
 	{
 		MessageBox(NULL, TEXT("Error"), TEXT("SectionName is Repetition"), MB_OK);
 		return FALSE;
@@ -221,6 +211,37 @@ BOOL CLoaderPE::AddSection(LPCSTR szName, SIZE_T nSize)
 	int nVirSize = GetSectionHeader(NumberSection - 1)->Misc.VirtualSize / 0x1000;
 	GetSectionHeader(NumberSection)->VirtualAddress += ((nVirSize + 1) * 0x1000);
 	GetSectionHeader(NumberSection)->PointerToRawData += GetSectionHeader(NumberSection - 1)->SizeOfRawData;
+	return TRUE;
+}
+
+BOOL CLoaderPE::AddSectionForStretch(LPCSTR szName, SIZE_T nSize /*= 0x1000*/)
+{
+	//先把节名字保存下来。
+	SaveSectionName();
+	//然后判断有没有重复的节名
+	if (IsSectionName((BYTE*)szName))
+	{
+		MessageBox(NULL, TEXT("Error"), TEXT("SectionName is Repetition"), MB_OK);
+		return FALSE;
+	}
+	lpImageBuffer = rMalloc(lpImageBuffer, dFileLen, nSize);
+	RedirectHeader();
+	//节的总数。
+	int NumberSection = pImageFileHeader->NumberOfSections;
+	//将最后一个节表复制到它下一个位置
+	memcpy(pImageSectionHeader + NumberSection, pImageSectionHeader + NumberSection - 1, sizeof(IMAGE_SECTION_HEADER));
+	//修改节表的总数
+	pImageFileHeader->NumberOfSections += 1;
+	//修改拉伸后的大小
+	pImageOperFileHeader->SizeOfImage += nSize;
+	//修改节名字
+	strcpy_s((CHAR*)(pImageSectionHeader + NumberSection)->Name, IMAGE_SIZEOF_SHORT_NAME, szName);
+	(pImageSectionHeader + NumberSection)->Misc.VirtualSize = nSize;
+	(pImageSectionHeader + NumberSection)->SizeOfRawData = nSize;
+	//取整
+	int nVirSize = (pImageSectionHeader + NumberSection - 1)->Misc.VirtualSize / 0x1000;
+	(pImageSectionHeader + NumberSection)->VirtualAddress += ((nVirSize + 1) * 0x1000);
+	(pImageSectionHeader + NumberSection)->PointerToRawData += (pImageSectionHeader + NumberSection - 1)->SizeOfRawData;
 	return TRUE;
 }
 
@@ -282,10 +303,10 @@ LPVOID CLoaderPE::rMalloc(LPVOID ptr, INT nOldSize,INT nAddSize)
 	ptr = NULL;
 	return lpNewBuff;
 }
-
+//查看map中是否有这个key
 BOOL CLoaderPE::IsSectionName(BYTE* bName)
 {
-	return mSectionName.find(bName)->second;
+	return mSectionName.count(bName);
 }
 
 INT CLoaderPE::GetFileHeaderBlankSize()
@@ -297,4 +318,86 @@ VOID CLoaderPE::MoveHeaderForDOS()
 {
 	memmove((CHAR*)lpBuffer + sizeof(IMAGE_DOS_HEADER), (CHAR*)lpBuffer + GetDosHeader()->e_lfanew, sizeof(IMAGE_NT_HEADERS) + sizeof(IMAGE_SECTION_HEADER)*GetPeHeader()->NumberOfSections);
 	GetDosHeader()->e_lfanew = sizeof(IMAGE_DOS_HEADER);
+}
+
+VOID CLoaderPE::ExpandFinalSection(INT nSize)
+{
+	lpBuffer = rMalloc(lpBuffer, nNewFileSize, nSize);
+	int NumberSection = GetPeHeader()->NumberOfSections - 1;
+	GetSectionHeader(NumberSection)->Misc.VirtualSize += nSize;
+	GetSectionHeader(NumberSection)->SizeOfRawData += nSize;
+	GetOperHeader()->SizeOfImage += nSize;
+}
+
+SIZE_T CLoaderPE::RVAToOffset(SIZE_T stRVA, PVOID lpFileBuf)
+{
+	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;
+	size_t stPEHeadAddr = (size_t)lpFileBuf + pDos->e_lfanew;
+	PIMAGE_NT_HEADERS32 pNT = (PIMAGE_NT_HEADERS32)stPEHeadAddr;
+	//区段数  
+	DWORD dwSectionCount = pNT->FileHeader.NumberOfSections;
+	//内存对齐大小  
+	DWORD dwMemoruAil = pNT->OptionalHeader.SectionAlignment;
+	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNT);
+	//距离命中节的起始虚拟地址的偏移值。  
+	DWORD  dwDiffer = 0;
+	for (DWORD i = 0; i < dwSectionCount; i++)
+	{
+		//模拟内存对齐机制  
+		DWORD dwBlockCount = pSection[i].SizeOfRawData / dwMemoruAil;
+		dwBlockCount += pSection[i].SizeOfRawData % dwMemoruAil ? 1 : 0;
+
+		DWORD dwBeginVA = pSection[i].VirtualAddress;
+		DWORD dwEndVA = pSection[i].VirtualAddress + dwBlockCount * dwMemoruAil;
+		//如果stRVA在某个区段中  
+		if (stRVA >= dwBeginVA && stRVA < dwEndVA)
+		{
+			dwDiffer = stRVA - dwBeginVA;
+			return pSection[i].PointerToRawData + dwDiffer;
+		}
+		else if (stRVA < dwBeginVA)//在文件头中直接返回  
+		{
+			return stRVA;
+		}
+	}
+	return 0;
+}
+
+SIZE_T CLoaderPE::OffsetToRVA(SIZE_T stOffset, PVOID lpFileBuf)
+{
+	//获取DOS头  
+	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;
+	//获取PE头  
+	//e_lfanew:PE头相对于文件的偏移地址  
+	size_t stPEHeadAddr = (size_t)lpFileBuf + pDos->e_lfanew;
+	PIMAGE_NT_HEADERS32 pNT = (PIMAGE_NT_HEADERS32)stPEHeadAddr;
+	//区段数  
+	DWORD dwSectionCount = pNT->FileHeader.NumberOfSections;
+	//映像地址  
+	DWORD dwImageBase = pNT->OptionalHeader.ImageBase;
+	//区段头  
+	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNT);
+
+	//相对大小  
+	DWORD  dwDiffer = 0;
+	for (DWORD i = 0; i < dwSectionCount; i++)
+	{
+		//区段的起始地址和结束地址  
+		DWORD dwBeginVA = pSection[i].PointerToRawData;
+		DWORD dwEndVA = pSection[i].PointerToRawData + pSection[i].SizeOfRawData;
+		//如果文件偏移地址在dwBeginVA和dwEndVA之间  
+		if (stOffset >= dwBeginVA && stOffset < dwEndVA)
+		{
+			//相对大小  
+			dwDiffer = stOffset - dwBeginVA;
+			//进程的起始地址 + 区段的相对地址 + 相对区段的大小  
+			//return dwImageBase + pSection[i].VirtualAddress + dwDiffer;  
+			return  pSection[i].VirtualAddress + dwDiffer;
+		}
+		else if (stOffset < dwBeginVA)    //如果文件偏移地址不在区段中  
+		{
+			return dwImageBase + stOffset;
+		}
+	}
+	return 0;
 }
