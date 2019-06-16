@@ -329,7 +329,7 @@ VOID CLoaderPE::ExpandFinalSection(INT nSize)
 	GetOperHeader()->SizeOfImage += nSize;
 }
 
-SIZE_T CLoaderPE::RVAToOffset(SIZE_T stRVA, PVOID lpFileBuf)
+DWORD CLoaderPE::RVAToOffset(DWORD stRVA, PVOID lpFileBuf)
 {
 	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;
 	size_t stPEHeadAddr = (size_t)lpFileBuf + pDos->e_lfanew;
@@ -363,7 +363,7 @@ SIZE_T CLoaderPE::RVAToOffset(SIZE_T stRVA, PVOID lpFileBuf)
 	return 0;
 }
 
-SIZE_T CLoaderPE::OffsetToRVA(SIZE_T stOffset, PVOID lpFileBuf)
+DWORD CLoaderPE::OffsetToRVA(DWORD stOffset, PVOID lpFileBuf)
 {
 	//ªÒ»°DOSÕ∑  
 	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;

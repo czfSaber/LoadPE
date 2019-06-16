@@ -60,14 +60,14 @@ public:
 		  lpFileBuf: 文件起始地址
 	返回：转换后的文件偏移地址
 */
-	SIZE_T RVAToOffset(SIZE_T stRVA, PVOID lpFileBuf);
+	DWORD RVAToOffset(DWORD stRVA, PVOID lpFileBuf);
 /*
 	功能：文件偏移地址和虚拟地址的转换
 	参数：stOffset：文件偏移地址
 		  lpFileBuf:虚拟内存起始地址
 	返回：转换后的虚拟地址
 */
-	SIZE_T OffsetToRVA(SIZE_T stOffset, PVOID lpFileBuf);
+	DWORD OffsetToRVA(DWORD stOffset, PVOID lpFileBuf);
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
 	LPVOID				lpImageBuffer;	//内存中的文件
