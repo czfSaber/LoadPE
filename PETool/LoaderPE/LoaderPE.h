@@ -31,6 +31,9 @@ public:
 	PIMAGE_OPTIONAL_HEADER GetOperHeader();
 	//获取单个节表;nIndex : 第几个节表
 	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 0);
+	//获得输出表结构
+	PIMAGE_EXPORT_DIRECTORY GetExportDir();
+	//获得输入表结构
 	//硬盘拷贝到内存
 	BOOL FileBuffCopyInImageBuff();
 	//内存拷贝到硬盘
@@ -54,6 +57,8 @@ public:
 	VOID MoveHeaderForDOS();
 	//扩大最后一个节
 	VOID ExpandFinalSection(INT nSize = 0x1000);
+	//打印输出表
+	VOID PringExportDir();
 /*
 	功能:虚拟内存相对地址和文件偏移的转换
 	参数：stRVA：    虚拟内存相对偏移地址

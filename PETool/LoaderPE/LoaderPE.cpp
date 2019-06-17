@@ -109,6 +109,11 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
 }
 
+PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
+{
+	return (PIMAGE_EXPORT_DIRECTORY)((CHAR*)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[ExportTable].VirtualAddress, lpBuffer));
+}
+
 BOOL CLoaderPE::FileBuffCopyInImageBuff()
 {
 	lpImageBuffer = malloc(GetOperHeader()->SizeOfImage);
@@ -327,6 +332,21 @@ VOID CLoaderPE::ExpandFinalSection(INT nSize)
 	GetSectionHeader(NumberSection)->Misc.VirtualSize += nSize;
 	GetSectionHeader(NumberSection)->SizeOfRawData += nSize;
 	GetOperHeader()->SizeOfImage += nSize;
+}
+
+VOID CLoaderPE::PringExportDir()
+{
+	DWORD dNames = RVAToOffset(GetExportDir()->AddressOfNames, lpBuffer);
+	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
+	DWORD dNumbs = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
+	int nNum = 0;
+	while (nNum < GetExportDir()->NumberOfNames)
+	{
+		if (((CHAR*)lpBuffer + dNames) == 0)
+		{
+			nNum += 1;
+		}
+	}
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD stRVA, PVOID lpFileBuf)
