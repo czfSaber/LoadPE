@@ -116,6 +116,63 @@ PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
 	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[ExportTable].VirtualAddress, lpBuffer));
 }
 
+BOOL CLoaderPE::FileBuffCopyInImageBuff()
+{
+	lpImageBuffer = malloc(GetOperHeader()->SizeOfImage);
+	memset(lpImageBuffer, 0, GetOperHeader()->SizeOfImage);
+	//lpImageBuffer = malloc(GetOperHeader()->SizeOfImage*2);
+	if (lpImageBuffer == NULL)
+	{
+		printf("VirtualAlloc failed.\n");
+		return FALSE;
+	}
+	//把文件头拷过去
+	memcpy(lpImageBuffer, lpBuffer, GetOperHeader()->SizeOfHeaders);
+
+	for (int i = 0; i < GetPeHeader()->NumberOfSections; ++i)
+	{
+		if (GetSectionHeader(i)->SizeOfRawData == 0 || GetSectionHeader(i)->PointerToRawData == 0)
+		{
+			continue;
+		}
+		//把节的内容拷过去
+		memcpy((LPVOID)((CHAR*)lpImageBuffer + GetSectionHeader(i)->VirtualAddress), (LPVOID)((CHAR*)lpBuffer+GetSectionHeader(i)->PointerToRawData),
+			GetSectionHeader(i)->SizeOfRawData);
+	}
+
+	RedirectHeader();
+	
+	return TRUE;
+}
+
+BOOL CLoaderPE::ImageBuffToFileBuff()
+{
+	//如果内存中没内容，直接退出
+	if (lpImageBuffer == NULL)
+	{
+		printf("lpImageBuffer is null");
+		return FALSE;
+	}
+
+	lpNewFileBuff = malloc(nNewFileSize);
+	memset(lpNewFileBuff, 0, nNewFileSize);
+	if (lpNewFileBuff == NULL)
+	{
+		printf("malloc failed.\n");
+		return FALSE;
+	}
+
+	memcpy(lpNewFileBuff, lpImageBuffer, pImageOperFileHeader->SizeOfHeaders);
+
+	for (int i = 0; i < pImageFileHeader->NumberOfSections; ++i)
+	{
+		memcpy((LPVOID)((CHAR*)lpNewFileBuff + (pImageSectionHeader + i)->PointerToRawData), (LPVOID)((CHAR*)lpImageBuffer + (pImageSectionHeader + i)->VirtualAddress),
+			(pImageSectionHeader + i)->Misc.VirtualSize);
+	}
+
+	return TRUE; 
+}
+
 INT CLoaderPE::GetRemainingSize(int nIndex)
 {
 	int nNum = 0;

@@ -34,7 +34,10 @@ public:
 	//获得输出表结构
 	PIMAGE_EXPORT_DIRECTORY GetExportDir();
 	//获得输入表结构
-
+	//硬盘拷贝到内存
+	BOOL FileBuffCopyInImageBuff();
+	//内存拷贝到硬盘
+	BOOL ImageBuffToFileBuff();
 	//获得节剩余空间的大小
 	INT GetRemainingSize(int nIndex = 0);
 	//添加节;In:节的名字
