@@ -336,17 +336,36 @@ VOID CLoaderPE::ExpandFinalSection(INT nSize)
 
 VOID CLoaderPE::PringExportDir()
 {
+
+	PULONG RVAFunctions = (PULONG)RVAToOffset(GetExportDir()->AddressOfFunctions,lpBuffer);
+	PULONG RVANames = (PULONG)(RVAToOffset(GetExportDir()->AddressOfNames,lpBuffer));
+	PUSHORT AddressOfNameOrdinals = (PUSHORT)(RVAToOffset(GetExportDir()->AddressOfNameOrdinals,lpBuffer));
+	DWORD RVA;
+	PUCHAR FunctionName;
+	int F_va_Tmp;
+
+	for (size_t i = 0; i < GetExportDir()->NumberOfNames; i++)
+	{
+		F_va_Tmp = (ULONG64)((LONG64)RVAFunctions[(USHORT)AddressOfNameOrdinals]);
+		FunctionName = (PUCHAR)((LONG64)RVANames);
+		printf("%p: %s - 0x%p\n", (USHORT)(AddressOfNameOrdinals + i), (PUCHAR)FunctionName, F_va_Tmp);
+	}
+
+
+	/*CHAR* FunctionName;
+
 	DWORD dNames = RVAToOffset(GetExportDir()->AddressOfNames, lpBuffer);
 	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
 	DWORD dNumbs = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
-	int nNum = 0;
-	while (nNum < GetExportDir()->NumberOfNames)
+
+	PULONG RVANames = (PULONG)((DWORD)lpBuffer + dNames);
+
+	DWORD  FOANames = RVAToOffset(*(DWORD*)(RVANames), lpBuffer);
+	FunctionName = (CHAR*)lpBuffer + FOANames;
+	printf("%s\n", FunctionName);*/
+	/*for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
 	{
-		if (((CHAR*)lpBuffer + dNames) == 0)
-		{
-			nNum += 1;
-		}
-	}
+	}*/
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD stRVA, PVOID lpFileBuf)
