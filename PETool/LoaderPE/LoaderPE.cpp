@@ -111,64 +111,9 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 
 PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
 {
-	return (PIMAGE_EXPORT_DIRECTORY)((CHAR*)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[ExportTable].VirtualAddress, lpBuffer));
-}
-
-BOOL CLoaderPE::FileBuffCopyInImageBuff()
-{
-	lpImageBuffer = malloc(GetOperHeader()->SizeOfImage);
-	memset(lpImageBuffer, 0, GetOperHeader()->SizeOfImage);
-	//lpImageBuffer = malloc(GetOperHeader()->SizeOfImage*2);
-	if (lpImageBuffer == NULL)
-	{
-		printf("VirtualAlloc failed.\n");
-		return FALSE;
-	}
-	//把文件头拷过去
-	memcpy(lpImageBuffer, lpBuffer, GetOperHeader()->SizeOfHeaders);
-
-	for (int i = 0; i < GetPeHeader()->NumberOfSections; ++i)
-	{
-		if (GetSectionHeader(i)->SizeOfRawData == 0 || GetSectionHeader(i)->PointerToRawData == 0)
-		{
-			continue;
-		}
-		//把节的内容拷过去
-		memcpy((LPVOID)((CHAR*)lpImageBuffer + GetSectionHeader(i)->VirtualAddress), (LPVOID)((CHAR*)lpBuffer+GetSectionHeader(i)->PointerToRawData),
-			GetSectionHeader(i)->SizeOfRawData);
-	}
-
-	RedirectHeader();
-	
-	return TRUE;
-}
-
-BOOL CLoaderPE::ImageBuffToFileBuff()
-{
-	//如果内存中没内容，直接退出
-	if (lpImageBuffer == NULL)
-	{
-		printf("lpImageBuffer is null");
-		return FALSE;
-	}
-
-	lpNewFileBuff = malloc(nNewFileSize);
-	memset(lpNewFileBuff, 0, nNewFileSize);
-	if (lpNewFileBuff == NULL)
-	{
-		printf("malloc failed.\n");
-		return FALSE;
-	}
-
-	memcpy(lpNewFileBuff, lpImageBuffer, pImageOperFileHeader->SizeOfHeaders);
-
-	for (int i = 0; i < pImageFileHeader->NumberOfSections; ++i)
-	{
-		memcpy((LPVOID)((CHAR*)lpNewFileBuff + (pImageSectionHeader + i)->PointerToRawData), (LPVOID)((CHAR*)lpImageBuffer + (pImageSectionHeader + i)->VirtualAddress),
-			(pImageSectionHeader + i)->Misc.VirtualSize);
-	}
-
-	return TRUE; 
+	DWORD dVirAddrs = GetOperHeader()->DataDirectory[ExportTable].VirtualAddress;
+	DWORD bak = RVAToOffset(dVirAddrs, lpBuffer);
+	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[ExportTable].VirtualAddress, lpBuffer));
 }
 
 INT CLoaderPE::GetRemainingSize(int nIndex)
@@ -336,23 +281,9 @@ VOID CLoaderPE::ExpandFinalSection(INT nSize)
 
 VOID CLoaderPE::PringExportDir()
 {
+	CHAR* FunctionName;
 
-	PULONG RVAFunctions = (PULONG)RVAToOffset(GetExportDir()->AddressOfFunctions,lpBuffer);
-	PULONG RVANames = (PULONG)(RVAToOffset(GetExportDir()->AddressOfNames,lpBuffer));
-	PUSHORT AddressOfNameOrdinals = (PUSHORT)(RVAToOffset(GetExportDir()->AddressOfNameOrdinals,lpBuffer));
-	DWORD RVA;
-	PUCHAR FunctionName;
-	int F_va_Tmp;
-
-	for (size_t i = 0; i < GetExportDir()->NumberOfNames; i++)
-	{
-		F_va_Tmp = (ULONG64)((LONG64)RVAFunctions[(USHORT)AddressOfNameOrdinals]);
-		FunctionName = (PUCHAR)((LONG64)RVANames);
-		printf("%p: %s - 0x%p\n", (USHORT)(AddressOfNameOrdinals + i), (PUCHAR)FunctionName, F_va_Tmp);
-	}
-
-
-	/*CHAR* FunctionName;
+	printf("%s\n", (DWORD)lpBuffer + RVAToOffset(GetExportDir()->Name,lpBuffer));
 
 	DWORD dNames = RVAToOffset(GetExportDir()->AddressOfNames, lpBuffer);
 	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
@@ -362,81 +293,21 @@ VOID CLoaderPE::PringExportDir()
 
 	DWORD  FOANames = RVAToOffset(*(DWORD*)(RVANames), lpBuffer);
 	FunctionName = (CHAR*)lpBuffer + FOANames;
-	printf("%s\n", FunctionName);*/
+	printf("%s\n", FunctionName);
 	/*for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
 	{
 	}*/
 }
 
-DWORD CLoaderPE::RVAToOffset(DWORD stRVA, PVOID lpFileBuf)
+DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 {
-	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;
-	size_t stPEHeadAddr = (size_t)lpFileBuf + pDos->e_lfanew;
-	PIMAGE_NT_HEADERS32 pNT = (PIMAGE_NT_HEADERS32)stPEHeadAddr;
-	//区段数  
-	DWORD dwSectionCount = pNT->FileHeader.NumberOfSections;
-	//内存对齐大小  
-	DWORD dwMemoruAil = pNT->OptionalHeader.SectionAlignment;
-	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNT);
-	//距离命中节的起始虚拟地址的偏移值。  
-	DWORD  dwDiffer = 0;
-	for (DWORD i = 0; i < dwSectionCount; i++)
+	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
+	for (int i = 0; i < nSections; ++i)
 	{
-		//模拟内存对齐机制  
-		DWORD dwBlockCount = pSection[i].SizeOfRawData / dwMemoruAil;
-		dwBlockCount += pSection[i].SizeOfRawData % dwMemoruAil ? 1 : 0;
-
-		DWORD dwBeginVA = pSection[i].VirtualAddress;
-		DWORD dwEndVA = pSection[i].VirtualAddress + dwBlockCount * dwMemoruAil;
-		//如果stRVA在某个区段中  
-		if (stRVA >= dwBeginVA && stRVA < dwEndVA)
+		if ((dwRva >= GetSectionHeader(i)->VirtualAddress) && (dwRva <= GetSectionHeader(i)->VirtualAddress + GetSectionHeader(i)->SizeOfRawData))
 		{
-			dwDiffer = stRVA - dwBeginVA;
-			return pSection[i].PointerToRawData + dwDiffer;
-		}
-		else if (stRVA < dwBeginVA)//在文件头中直接返回  
-		{
-			return stRVA;
+			return GetSectionHeader(i)->PointerToRawData + (dwRva - GetSectionHeader(i)->VirtualAddress);
 		}
 	}
-	return 0;
-}
-
-DWORD CLoaderPE::OffsetToRVA(DWORD stOffset, PVOID lpFileBuf)
-{
-	//获取DOS头  
-	PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)lpFileBuf;
-	//获取PE头  
-	//e_lfanew:PE头相对于文件的偏移地址  
-	size_t stPEHeadAddr = (size_t)lpFileBuf + pDos->e_lfanew;
-	PIMAGE_NT_HEADERS32 pNT = (PIMAGE_NT_HEADERS32)stPEHeadAddr;
-	//区段数  
-	DWORD dwSectionCount = pNT->FileHeader.NumberOfSections;
-	//映像地址  
-	DWORD dwImageBase = pNT->OptionalHeader.ImageBase;
-	//区段头  
-	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNT);
-
-	//相对大小  
-	DWORD  dwDiffer = 0;
-	for (DWORD i = 0; i < dwSectionCount; i++)
-	{
-		//区段的起始地址和结束地址  
-		DWORD dwBeginVA = pSection[i].PointerToRawData;
-		DWORD dwEndVA = pSection[i].PointerToRawData + pSection[i].SizeOfRawData;
-		//如果文件偏移地址在dwBeginVA和dwEndVA之间  
-		if (stOffset >= dwBeginVA && stOffset < dwEndVA)
-		{
-			//相对大小  
-			dwDiffer = stOffset - dwBeginVA;
-			//进程的起始地址 + 区段的相对地址 + 相对区段的大小  
-			//return dwImageBase + pSection[i].VirtualAddress + dwDiffer;  
-			return  pSection[i].VirtualAddress + dwDiffer;
-		}
-		else if (stOffset < dwBeginVA)    //如果文件偏移地址不在区段中  
-		{
-			return dwImageBase + stOffset;
-		}
-	}
-	return 0;
+	return -1;
 }
