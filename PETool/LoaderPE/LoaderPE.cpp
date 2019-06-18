@@ -111,9 +111,7 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 
 PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
 {
-	DWORD dVirAddrs = GetOperHeader()->DataDirectory[ExportTable].VirtualAddress;
-	DWORD bak = RVAToOffset(dVirAddrs, lpBuffer);
-	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[ExportTable].VirtualAddress, lpBuffer));
+	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress, lpBuffer));
 }
 
 BOOL CLoaderPE::FileBuffCopyInImageBuff()

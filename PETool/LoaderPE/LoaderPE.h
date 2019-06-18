@@ -85,23 +85,3 @@ public:
 	PIMAGE_FILE_HEADER		pImageFileHeader;
 	PIMAGE_OPTIONAL_HEADER	pImageOperFileHeader;
 };
-
-enum ETable
-{
-	ExportTable			= 0,	//导出表
-	ImportTable			= 1,	//导入表
-	Resource			= 2,	//资源
-	Abnormal			= 3,	//异常
-	Certificate			= 4,	//安全证书
-	ResetTable			= 5,	//重定位表
-	DebugInformation	= 6,	//调试信息
-	Copyright			= 7,	//版权所有
-	GlobalPointer		= 8,	//全局指针
-	TLSTable			= 9,	//TLS表
-	LoadConfig			= 10,	//加载配置
-	BindImport			= 11,	//绑定导入
-	IATTable			= 12,	//IAT表
-	DelayedImport		= 13,	//延迟导入
-	COM					= 14,
-	Reserved			= 15	//保留。
-};
