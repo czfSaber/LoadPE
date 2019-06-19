@@ -340,18 +340,21 @@ VOID CLoaderPE::PringExportDir()
 
 	printf("%s\n", (DWORD)lpBuffer + RVAToOffset(GetExportDir()->Name,lpBuffer));
 
+	DWORD dNameOrdinal = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
+	WORD* pNameOrdinal = (WORD*)((DWORD)lpBuffer + dNameOrdinal);
 	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
+	DWORD* pFuncs = (DWORD*)((DWORD)lpBuffer + dFuncs);
 
 	for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
 	{
-		/*DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (i * 4), lpBuffer);
+		DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (i * 4), lpBuffer);
 		DWORD* RVANames = (DWORD*)((DWORD)lpBuffer + dName);
 		DWORD  FOANames = RVAToOffset(*(DWORD*)RVANames, lpBuffer);
 		FunctionName = (CHAR*)lpBuffer + FOANames;
-		printf("%s\n", FunctionName);*/
-		DWORD dBak = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
-		CHAR* dNumbs = (CHAR*)(DWORD)lpBuffer + dBak;
-		printf("%d\t", dNumbs);
+
+		INT nNameOrdinal = *pNameOrdinal + i;
+		
+		printf("%d\t%s\t0x%x\n", nNameOrdinal, FunctionName, *(pFuncs + (nNameOrdinal - GetExportDir()->Base)));
 	}
 }
 
