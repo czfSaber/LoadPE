@@ -340,18 +340,19 @@ VOID CLoaderPE::PringExportDir()
 
 	printf("%s\n", (DWORD)lpBuffer + RVAToOffset(GetExportDir()->Name,lpBuffer));
 
-	DWORD dNames = RVAToOffset(GetExportDir()->AddressOfNames, lpBuffer);
 	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
-	DWORD dNumbs = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
 
-	PULONG RVANames = (PULONG)((DWORD)lpBuffer + dNames);
-
-	DWORD  FOANames = RVAToOffset(*(DWORD*)(RVANames), lpBuffer);
-	FunctionName = (CHAR*)lpBuffer + FOANames;
-	printf("%s\n", FunctionName);
-	/*for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
+	for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
 	{
-	}*/
+		/*DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (i * 4), lpBuffer);
+		DWORD* RVANames = (DWORD*)((DWORD)lpBuffer + dName);
+		DWORD  FOANames = RVAToOffset(*(DWORD*)RVANames, lpBuffer);
+		FunctionName = (CHAR*)lpBuffer + FOANames;
+		printf("%s\n", FunctionName);*/
+		DWORD dBak = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
+		CHAR* dNumbs = (CHAR*)(DWORD)lpBuffer + dBak;
+		printf("%d\t", dNumbs);
+	}
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
