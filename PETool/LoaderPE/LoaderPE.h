@@ -59,6 +59,10 @@ public:
 	VOID ExpandFinalSection(INT nSize = 0x1000);
 	//打印输出表
 	VOID PringExportDir();
+	//根据函数名找到函数地址
+	DWORD GetFuncAddresForName(LPCSTR szFuncName);
+	//根据序号找到函数地址
+	DWORD GetFuncAddresForNumber(INT nNum);
 /*
 	功能:虚拟内存相对地址和文件偏移的转换
 	参数：stRVA：    虚拟内存相对偏移地址

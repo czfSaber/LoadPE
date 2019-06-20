@@ -345,17 +345,57 @@ VOID CLoaderPE::PringExportDir()
 	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
 	DWORD* pFuncs = (DWORD*)((DWORD)lpBuffer + dFuncs);
 
-	for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
+	INT Num = GetExportDir()->NumberOfFunctions;
+	for (int i = 0; i < Num; ++i)
 	{
-		DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (i * 4), lpBuffer);
+		int j = 0;
+		//循环地址id在序号表中的位置
+		for (j; j < Num; ++j)
+		{
+			if (*(pNameOrdinal+j) == i)
+			{
+				break;
+			}
+		}
+
+		DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (j * 4), lpBuffer);
 		DWORD* RVANames = (DWORD*)((DWORD)lpBuffer + dName);
 		DWORD  FOANames = RVAToOffset(*(DWORD*)RVANames, lpBuffer);
 		FunctionName = (CHAR*)lpBuffer + FOANames;
 
 		INT nNameOrdinal = *pNameOrdinal + i;
-		
-		printf("%d\t%s\t0x%x\n", nNameOrdinal, FunctionName, *(pFuncs + (nNameOrdinal - GetExportDir()->Base)));
+		printf("%d\t0x%08x\t%s\n", nNameOrdinal, *(pFuncs + (nNameOrdinal - GetExportDir()->Base)), FunctionName);
 	}
+}
+
+DWORD CLoaderPE::GetFuncAddresForName(LPCSTR szFuncName)
+{
+	for (int i = 0; i < GetExportDir()->NumberOfNames; ++i)
+	{
+		DWORD dName = RVAToOffset(GetExportDir()->AddressOfNames + (i * 4), lpBuffer);
+		DWORD* RVANames = (DWORD*)((DWORD)lpBuffer + dName);
+		DWORD  FOANames = RVAToOffset(*(DWORD*)RVANames, lpBuffer);
+		CHAR* FunctionName = (CHAR*)lpBuffer + FOANames;
+		if (strcmp(FunctionName,szFuncName) == 0)
+		{
+			DWORD dNameOrdinal = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
+			WORD* pNameOrdinal = (WORD*)((DWORD)lpBuffer + dNameOrdinal);
+			DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
+			DWORD* pFuncs = (DWORD*)((DWORD)lpBuffer + dFuncs);
+			return *(pFuncs + (*pNameOrdinal + i));
+		}
+	}
+	return -1;
+}
+
+DWORD CLoaderPE::GetFuncAddresForNumber(INT nNum)
+{
+	DWORD dNameOrdinal = RVAToOffset(GetExportDir()->AddressOfNameOrdinals, lpBuffer);
+	WORD* pNameOrdinal = (WORD*)((DWORD)lpBuffer + dNameOrdinal);
+	DWORD dFuncs = RVAToOffset(GetExportDir()->AddressOfFunctions, lpBuffer);
+	DWORD* pFuncs = (DWORD*)((DWORD)lpBuffer + dFuncs);
+	INT nNameOrdinal = *pNameOrdinal + nNum - 1;	//数组是从0下标开始的，所以这里减一
+	return *(pFuncs + (nNameOrdinal - GetExportDir()->Base));
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
