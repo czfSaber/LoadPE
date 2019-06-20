@@ -111,6 +111,11 @@ PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 
 PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
 {
+	if (GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress == 0)
+	{
+		MessageBox(NULL, TEXT("没用导出函数"), TEXT("warning"), MB_OK);
+		exit(0);
+	}
 	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress, lpBuffer));
 }
 

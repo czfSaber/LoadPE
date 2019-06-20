@@ -42,6 +42,7 @@ public:
 	INT GetRemainingSize(int nIndex = 0);
 	//添加节;In:节的名字
 	BOOL AddSection(LPCSTR szName, SIZE_T nSize = 0x1000);
+	//扩展最后一个节
 	BOOL AddSectionForStretch(LPCSTR szName, SIZE_T nSize = 0x1000);
 	//重定向头
 	void RedirectHeader();
