@@ -106,7 +106,14 @@ PIMAGE_OPTIONAL_HEADER CLoaderPE::GetOperHeader()
 
 PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 {
-	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
+	if (nIndex <= 0)
+	{
+		nIndex = 1;
+	}else if (nIndex >= GetPeHeader()->NumberOfSections)
+	{
+		nIndex = GetPeHeader()->NumberOfSections;
+	}
+	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex - 1;
 }
 
 PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
@@ -117,6 +124,27 @@ PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
 		exit(0);
 	}
 	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress, lpBuffer));
+}
+
+PIMAGE_BASE_RELOCATION CLoaderPE::GetBaseReloc(INT nIndex)
+{
+	DWORD bak = RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress, lpBuffer);
+	PDWORD pIndex = (PDWORD)((DWORD)lpBuffer +  RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress, lpBuffer));
+	if (*pIndex == 0 && *(pIndex + 1) == 0)
+	{
+		return NULL;
+	}
+	nIndex = (nIndex <= 0 ? 1 : nIndex);
+	for (int i = 0; i <= nIndex - 1; ++i)
+	{
+		pIndex = (PDWORD)(((DWORD)pIndex) + *(pIndex + 1));
+		if (*pIndex == 0 && *(pIndex + 1) == 0)
+		{
+			break;
+		}
+	}
+
+	return (PIMAGE_BASE_RELOCATION)pIndex;
 }
 
 BOOL CLoaderPE::FileBuffCopyInImageBuff()
@@ -339,7 +367,7 @@ VOID CLoaderPE::ExpandFinalSection(INT nSize)
 	GetOperHeader()->SizeOfImage += nSize;
 }
 
-VOID CLoaderPE::PringExportDir()
+VOID CLoaderPE::PrintExportDir()
 {
 	CHAR* FunctionName;
 
@@ -403,10 +431,43 @@ DWORD CLoaderPE::GetFuncAddresForNumber(INT nNum)
 	return *(pFuncs + (nNameOrdinal - GetExportDir()->Base));
 }
 
+VOID CLoaderPE::PrintBaseRrloc()
+{
+	INT nIndex = 0;//记录有多少条数据要修改
+	INT nIndexTab = 1;	//记录表的个数
+	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0 && GetBaseReloc(nIndexTab)->SizeOfBlock != 0)
+	{
+		//指向重定向表的数据区
+		PBaseAddr baseAdd = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
+		//循环重定向表的数据区
+		for (int i = 0; i < GetBaseReloc(nIndexTab)->SizeOfBlock - 8; ++i)
+		{
+			if ((baseAdd + i)->Align == 3)
+			{
+				DWORD modify = RVAToOffset(GetBaseReloc(nIndexTab)->VirtualAddress + baseAdd->Addr, lpBuffer);
+				printf("%X\t", modify);
+				nIndex += 1;
+			}
+		}
+		nIndexTab += 1;
+	}
+	//printf("%d\n", GetBaseRelocNum());
+}
+
+WORD CLoaderPE::GetBaseRelocNum()
+{
+	INT nNum = 0;
+	while (GetBaseReloc(nNum)->VirtualAddress != 0 && GetBaseReloc(nNum)->SizeOfBlock != 0)
+	{
+		nNum += 1;
+	}
+	return nNum;
+}
+
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 {
 	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
-	for (int i = 0; i < nSections; ++i)
+	for (int i = 0; i <= nSections; ++i)
 	{
 		if ((dwRva >= GetSectionHeader(i)->VirtualAddress) && (dwRva <= GetSectionHeader(i)->VirtualAddress + GetSectionHeader(i)->SizeOfRawData))
 		{

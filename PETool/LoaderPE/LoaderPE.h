@@ -15,6 +15,10 @@ class CLoaderPE
 {
 private:
 	void SaveSectionName();
+	//获得输出表结构
+	PIMAGE_EXPORT_DIRECTORY GetExportDir();
+	//获得重定位表
+	PIMAGE_BASE_RELOCATION GetBaseReloc(INT nIndex = 0);
 public:
 	CLoaderPE();
 	CLoaderPE(LPCSTR lpFileName);
@@ -30,10 +34,7 @@ public:
 	//获得可选PE头
 	PIMAGE_OPTIONAL_HEADER GetOperHeader();
 	//获取单个节表;nIndex : 第几个节表
-	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 0);
-	//获得输出表结构
-	PIMAGE_EXPORT_DIRECTORY GetExportDir();
-	//获得输入表结构
+	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 1);
 	//硬盘拷贝到内存
 	BOOL FileBuffCopyInImageBuff();
 	//内存拷贝到硬盘
@@ -59,11 +60,15 @@ public:
 	//扩大最后一个节
 	VOID ExpandFinalSection(INT nSize = 0x1000);
 	//打印输出表
-	VOID PringExportDir();
+	VOID PrintExportDir();
 	//根据函数名找到函数地址
 	DWORD GetFuncAddresForName(LPCSTR szFuncName);
 	//根据序号找到函数地址
 	DWORD GetFuncAddresForNumber(INT nNum);
+	//输出重定位表
+	VOID PrintBaseRrloc();
+	//获得重定位表的个数
+	WORD GetBaseRelocNum();
 /*
 	功能:虚拟内存相对地址和文件偏移的转换
 	参数：stRVA：    虚拟内存相对偏移地址
@@ -71,6 +76,7 @@ public:
 	返回：转换后的文件偏移地址
 */
 	DWORD RVAToOffset(DWORD dwRva, PVOID pMapping);
+	
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
 	LPVOID				lpImageBuffer;	//内存中的文件
@@ -83,6 +89,11 @@ private:
 	DWORD				dLen;
 	DWORD				dFileLen;
 	map<BYTE*, BOOL>	mSectionName;
+	typedef struct BaseRelocAddress
+	{
+		WORD Addr	: 12;
+		WORD Align  : 4;
+	}BaseAddr,*PBaseAddr;
 public:
 	PIMAGE_DOS_HEADER		pImageDosHeader;
 	PIMAGE_NT_HEADERS		pImageNTHeader;
