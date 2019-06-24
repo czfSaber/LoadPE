@@ -433,7 +433,6 @@ DWORD CLoaderPE::GetFuncAddresForNumber(INT nNum)
 
 VOID CLoaderPE::PrintBaseRrloc()
 {
-	INT nIndex = 0;//记录有多少条数据要修改
 	INT nIndexTab = 0;	//记录表的个数
 	PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc() + 8);
 	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0)
@@ -442,7 +441,7 @@ VOID CLoaderPE::PrintBaseRrloc()
 		printf("需要修改的地址：\n");
 		PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
 		DWORD Bak = (GetBaseReloc(nIndexTab)->SizeOfBlock - 8) / 2;
-		nIndex = 0;
+		INT nIndex = 0;
 		for (nIndex; nIndex < Bak; ++nIndex)
 		{
 			if (pBase[nIndex].Align == 3)
