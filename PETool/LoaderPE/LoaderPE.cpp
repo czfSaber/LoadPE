@@ -134,8 +134,8 @@ PIMAGE_BASE_RELOCATION CLoaderPE::GetBaseReloc(INT nIndex)
 	{
 		return NULL;
 	}
-	nIndex = (nIndex <= 0 ? 1 : nIndex);
-	for (int i = 0; i <= nIndex - 1; ++i)
+	nIndex = (nIndex < 0 ? 0 : nIndex);
+	for (int i = 0; i < nIndex; ++i)
 	{
 		pIndex = (PDWORD)(((DWORD)pIndex) + *(pIndex + 1));
 		if (*pIndex == 0 && *(pIndex + 1) == 0)
@@ -434,24 +434,30 @@ DWORD CLoaderPE::GetFuncAddresForNumber(INT nNum)
 VOID CLoaderPE::PrintBaseRrloc()
 {
 	INT nIndex = 0;//记录有多少条数据要修改
-	INT nIndexTab = 1;	//记录表的个数
-	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0 && GetBaseReloc(nIndexTab)->SizeOfBlock != 0)
+	INT nIndexTab = 0;	//记录表的个数
+	PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc() + 8);
+	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0)
 	{
-		//指向重定向表的数据区
-		PBaseAddr baseAdd = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
-		//循环重定向表的数据区
-		for (int i = 0; i < GetBaseReloc(nIndexTab)->SizeOfBlock - 8; ++i)
+		printf("RVA基址：%X\n", GetBaseReloc(nIndexTab)->VirtualAddress);
+		printf("需要修改的地址：\n");
+		PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
+		DWORD Bak = (GetBaseReloc(nIndexTab)->SizeOfBlock - 8) / 2;
+		nIndex = 0;
+		for (nIndex; nIndex < Bak; ++nIndex)
 		{
-			if ((baseAdd + i)->Align == 3)
+			if (pBase[nIndex].Align == 3)
 			{
-				DWORD modify = RVAToOffset(GetBaseReloc(nIndexTab)->VirtualAddress + baseAdd->Addr, lpBuffer);
-				printf("%X\t", modify);
-				nIndex += 1;
+				if (nIndex % 4 == 0 && nIndex != 0)
+				{
+					printf("\n");
+				}
+				printf("%X\t", pBase[nIndex].Addr + GetBaseReloc(nIndexTab)->VirtualAddress);
 			}
 		}
+		printf("\n");
+		printf("\n");
 		nIndexTab += 1;
 	}
-	//printf("%d\n", GetBaseRelocNum());
 }
 
 WORD CLoaderPE::GetBaseRelocNum()
