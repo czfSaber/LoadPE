@@ -466,7 +466,34 @@ WORD CLoaderPE::GetBaseRelocNum()
 	{
 		nNum += 1;
 	}
-	return nNum;
+	return nNum ;
+}
+
+VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
+{
+	INT nIndexTab = 0;	//记录表的个数
+	PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc() + 8);
+	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0)
+	{
+		PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
+		DWORD Bak = (GetBaseReloc(nIndexTab)->SizeOfBlock - 8) / 2;
+		INT nIndex = 0;
+		for (nIndex; nIndex < Bak; ++nIndex)
+		{
+			if (pBase[nIndex].Align == 3)
+			{
+				if (nIndex % 4 == 0 && nIndex != 0)
+				{
+					printf("\n");
+				}
+				DWORD Offset = RVAToOffset(pBase[nIndex].Addr + GetBaseReloc(nIndexTab)->VirtualAddress, lpBuffer);
+				DWORD addrBak = *(DWORD*)((DWORD)lpBuffer + Offset);
+				addrBak += addr;
+				//printf("%x", addrBak);
+			}
+		}
+		nIndexTab += 1;
+	}
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)

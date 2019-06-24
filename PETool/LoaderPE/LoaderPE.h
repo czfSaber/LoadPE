@@ -69,6 +69,8 @@ public:
 	VOID PrintBaseRrloc();
 	//获得重定位表的个数
 	WORD GetBaseRelocNum();
+	//修复重定位表
+	VOID RepairBaseRrloc(DWORD addr);
 /*
 	功能:虚拟内存相对地址和文件偏移的转换
 	参数：stRVA：    虚拟内存相对偏移地址
