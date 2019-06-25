@@ -435,7 +435,7 @@ VOID CLoaderPE::PrintBaseRrloc()
 {
 	INT nIndexTab = 0;	//记录表的个数
 	PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc() + 8);
-	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0)
+	while (GetBaseReloc(nIndexTab)->VirtualAddress)
 	{
 		printf("RVA基址：%X\n", GetBaseReloc(nIndexTab)->VirtualAddress);
 		printf("需要修改的地址：\n");
@@ -462,7 +462,7 @@ VOID CLoaderPE::PrintBaseRrloc()
 WORD CLoaderPE::GetBaseRelocNum()
 {
 	INT nNum = 0;
-	while (GetBaseReloc(nNum)->VirtualAddress != 0 && GetBaseReloc(nNum)->SizeOfBlock != 0)
+	while (GetBaseReloc(nNum)->VirtualAddress && GetBaseReloc(nNum)->SizeOfBlock)
 	{
 		nNum += 1;
 	}
@@ -472,8 +472,7 @@ WORD CLoaderPE::GetBaseRelocNum()
 VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 {
 	INT nIndexTab = 0;	//记录表的个数
-	PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc() + 8);
-	while (GetBaseReloc(nIndexTab)->VirtualAddress != 0)
+	while (GetBaseReloc(nIndexTab)->VirtualAddress)
 	{
 		PBaseAddr pBase = (PBaseAddr)((DWORD)GetBaseReloc(nIndexTab) + 8);
 		DWORD Bak = (GetBaseReloc(nIndexTab)->SizeOfBlock - 8) / 2;
@@ -482,14 +481,9 @@ VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 		{
 			if (pBase[nIndex].Align == 3)
 			{
-				if (nIndex % 4 == 0 && nIndex != 0)
-				{
-					printf("\n");
-				}
-				DWORD Offset = RVAToOffset(pBase[nIndex].Addr + GetBaseReloc(nIndexTab)->VirtualAddress, lpBuffer);
-				DWORD addrBak = *(DWORD*)((DWORD)lpBuffer + Offset);
-				addrBak += addr;
-				//printf("%x", addrBak);
+				LPVOID OffsetAddr = (PCHAR)lpBuffer + RVAToOffset(pBase[nIndex].Addr + GetBaseReloc(nIndexTab)->VirtualAddress, lpBuffer);
+				DWORD bak = *(DWORD*)OffsetAddr;
+				*(DWORD*)OffsetAddr += addr;
 			}
 		}
 		nIndexTab += 1;
@@ -508,3 +502,4 @@ DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 	}
 	return -1;
 }
+
