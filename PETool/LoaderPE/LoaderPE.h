@@ -71,6 +71,8 @@ public:
 	WORD GetBaseRelocNum();
 	//修复重定位表
 	VOID RepairBaseRrloc(DWORD addr);
+	//输出导入表
+	VOID PrintImportTable();
 /*
 	功能:虚拟内存相对地址和文件偏移的转换
 	参数：stRVA：    虚拟内存相对偏移地址
@@ -91,11 +93,13 @@ private:
 	DWORD				dLen;
 	DWORD				dFileLen;
 	map<BYTE*, BOOL>	mSectionName;
+	//重定向表
 	typedef struct BaseRelocAddress
 	{
 		WORD Addr	: 12;
-		WORD Align  : 4;
+		WORD Flag  : 4;
 	}BaseAddr,*PBaseAddr;
+
 public:
 	PIMAGE_DOS_HEADER		pImageDosHeader;
 	PIMAGE_NT_HEADERS		pImageNTHeader;

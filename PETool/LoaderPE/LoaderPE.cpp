@@ -444,7 +444,7 @@ VOID CLoaderPE::PrintBaseRrloc()
 		INT nIndex = 0;
 		for (nIndex; nIndex < Bak; ++nIndex)
 		{
-			if (pBase[nIndex].Align == 3)
+			if (pBase[nIndex].Flag == 3)
 			{
 				if (nIndex % 4 == 0 && nIndex != 0)
 				{
@@ -479,7 +479,7 @@ VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 		INT nIndex = 0;
 		for (nIndex; nIndex < Bak; ++nIndex)
 		{
-			if (pBase[nIndex].Align == 3)
+			if (pBase[nIndex].Flag == 3)
 			{
 				LPVOID OffsetAddr = (PCHAR)lpBuffer + RVAToOffset(pBase[nIndex].Addr + GetBaseReloc(nIndexTab)->VirtualAddress, lpBuffer);
 				DWORD bak = *(DWORD*)OffsetAddr;
@@ -487,6 +487,36 @@ VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 			}
 		}
 		nIndexTab += 1;
+	}
+}
+
+VOID CLoaderPE::PrintImportTable()
+{
+	PIMAGE_IMPORT_DESCRIPTOR pImport = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+	INT nIndex = 0;//导入表的个数
+	while ((pImport + nIndex)->Name)
+	{
+		printf("%s\n", (DWORD)lpBuffer + RVAToOffset((pImport + nIndex)->Name, lpBuffer));
+		//名称
+		PDWORD pIAT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->OriginalFirstThunk, lpBuffer));
+		//地址
+		DWORD pINT = (DWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->FirstThunk, lpBuffer));
+		while (*pIAT)
+		{
+			//判断最高位
+			if (IMAGE_SNAP_BY_ORDINAL(*pIAT))
+			{
+				printf("序号：0x%x \t地址：0x%x \n", *pIAT & 0xFFFF, *pIAT);
+			}
+			else
+			{
+				PCHAR pName = (PCHAR)lpBuffer + RVAToOffset(*pIAT, lpBuffer) + sizeof(WORD);
+				printf("名称：%s \t 地址：0x%x\n", pName,*pIAT);
+			}
+			pIAT += 1;
+			pINT += 1;
+		}
+		nIndex += 1;
 	}
 }
 
