@@ -533,3 +533,16 @@ DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 	return -1;
 }
 
+DWORD CLoaderPE::OffsetToRVA(DWORD dwRva, PVOID pMapping)
+{
+	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
+	for (int i = 0; i <= nSections; ++i)
+	{
+		if ((dwRva >= GetSectionHeader(i)->PointerToRawData) && (dwRva <= GetSectionHeader(i)->PointerToRawData + GetSectionHeader(i)->SizeOfRawData))
+		{
+			return GetSectionHeader(i)->VirtualAddress + (dwRva - GetSectionHeader(i)->PointerToRawData);
+		}
+	}
+	return -1;
+}
+

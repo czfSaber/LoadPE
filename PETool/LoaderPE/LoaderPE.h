@@ -80,6 +80,7 @@ public:
 	返回：转换后的文件偏移地址
 */
 	DWORD RVAToOffset(DWORD dwRva, PVOID pMapping);
+	DWORD OffsetToRVA(DWORD dwRva, PVOID pMapping);
 	
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
