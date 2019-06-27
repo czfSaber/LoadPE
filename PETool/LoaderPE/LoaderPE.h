@@ -74,6 +74,8 @@ public:
 	WORD GetBaseRelocNum();
 	//修复重定位表
 	VOID RepairBaseRrloc(DWORD addr);
+	//获得导入表
+	PIMAGE_IMPORT_DESCRIPTOR GetImportTable(INT nIndex = 0);
 	//输出导入表
 	VOID PrintImportTable();
 	//输出绑定导入表

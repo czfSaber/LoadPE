@@ -490,9 +490,14 @@ VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 	}
 }
 
+PIMAGE_IMPORT_DESCRIPTOR CLoaderPE::GetImportTable(INT nIndex /*= 0*/)
+{
+	return (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+}
+
 VOID CLoaderPE::PrintImportTable()
 {
-	PIMAGE_IMPORT_DESCRIPTOR pImport = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+	PIMAGE_IMPORT_DESCRIPTOR pImport = GetImportTable();
 	INT nIndex = 0;//导入表的个数
 	while ((pImport + nIndex)->Name)
 	{
@@ -529,7 +534,7 @@ VOID CLoaderPE::PrintBoundImport()
 
 INT CLoaderPE::GetImportTableNum()
 {
-	PIMAGE_IMPORT_DESCRIPTOR pImport = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+	PIMAGE_IMPORT_DESCRIPTOR pImport = GetImportTable();
 	INT nIndex = 0;//导入表的个数
 	while ((pImport + nIndex)->Name)
 	{
