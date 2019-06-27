@@ -43,7 +43,7 @@ public:
 	//内存拷贝到硬盘
 	BOOL ImageBuffToFileBuff();
 	//获得节剩余空间的大小
-	INT GetRemainingSize(int nIndex = 0);
+	INT GetSectionNullSize(int nIndex = 0);
 	//添加节;In:节的名字
 	BOOL AddSection(LPCSTR szName, SIZE_T nSize = 0x1000);
 	//扩展最后一个节
@@ -78,6 +78,10 @@ public:
 	VOID PrintImportTable();
 	//输出绑定导入表
 	VOID PrintBoundImport();
+	//获得导入表的个数
+	INT GetImportTableNum();
+	//移动导入表到节; nIndex:第几个节
+	BOOL MoveImpotrTableForSection(INT nIndex = 0);
 	
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件

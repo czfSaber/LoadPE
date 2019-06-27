@@ -106,14 +106,14 @@ PIMAGE_OPTIONAL_HEADER CLoaderPE::GetOperHeader()
 
 PIMAGE_SECTION_HEADER CLoaderPE::GetSectionHeader(int nIndex)
 {
-	if (nIndex <= 0)
+	if (nIndex < 0)
 	{
-		nIndex = 1;
+		nIndex = 0;
 	}else if (nIndex >= GetPeHeader()->NumberOfSections)
 	{
 		nIndex = GetPeHeader()->NumberOfSections;
 	}
-	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex - 1;
+	return (PIMAGE_SECTION_HEADER)((CHAR*)&GetOperHeader()->Magic + GetPeHeader()->SizeOfOptionalHeader) + nIndex;
 }
 
 PIMAGE_EXPORT_DIRECTORY CLoaderPE::GetExportDir()
@@ -204,7 +204,7 @@ BOOL CLoaderPE::ImageBuffToFileBuff()
 	return TRUE; 
 }
 
-INT CLoaderPE::GetRemainingSize(int nIndex)
+INT CLoaderPE::GetSectionNullSize(int nIndex)
 {
 	int nNum = 0;
 	//因为指针是从0开始计算的，所以这里要减一个
@@ -525,6 +525,38 @@ VOID CLoaderPE::PrintBoundImport()
 	DWORD BoundBase = (DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].VirtualAddress,lpBuffer);
 	PIMAGE_BOUND_IMPORT_DESCRIPTOR pBoundImport = (PIMAGE_BOUND_IMPORT_DESCRIPTOR)BoundBase;
 	printf("%s\n", BoundBase + pBoundImport->OffsetModuleName);
+}
+
+INT CLoaderPE::GetImportTableNum()
+{
+	PIMAGE_IMPORT_DESCRIPTOR pImport = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+	INT nIndex = 0;//导入表的个数
+	while ((pImport + nIndex)->Name)
+	{
+		nIndex += 1;
+	}
+	return nIndex;
+}
+
+BOOL CLoaderPE::MoveImpotrTableForSection(INT nIndex /*= 0*/)
+{
+	INT nSecSize = GetSectionNullSize(nIndex);
+	INT nImportSize = GetImportTableNum() * sizeof(IMAGE_IMPORT_DESCRIPTOR);
+	//如果该节的空白处小于所有导入表的大小
+	if (nSecSize < nImportSize + sizeof(IMAGE_IMPORT_DESCRIPTOR))
+	{
+		return FALSE;
+	}
+	//记录下导入表的偏移
+	DWORD dImportFOA = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - nSecSize;
+	//计入下导入表新的首地址
+	DWORD dImportAddr = (DWORD)lpBuffer + dImportFOA;
+	//旧导入表的地址
+	DWORD dOldImportAddr = DWORD(lpBuffer) + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer);
+	memmove((PDWORD)dImportAddr, (PDWORD)dOldImportAddr, nImportSize);
+	//修改新导出表的RVA
+	GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = OffsetToRVA(dImportFOA, lpBuffer);
+	return TRUE;
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
