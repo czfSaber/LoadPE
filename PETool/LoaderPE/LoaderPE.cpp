@@ -498,20 +498,20 @@ VOID CLoaderPE::PrintImportTable()
 	{
 		printf("%s\n", (DWORD)lpBuffer + RVAToOffset((pImport + nIndex)->Name, lpBuffer));
 		//名称
-		PDWORD pIAT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->OriginalFirstThunk, lpBuffer));
+		PDWORD pIAT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->FirstThunk, lpBuffer));
 		//地址
-		DWORD pINT = (DWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->FirstThunk, lpBuffer));
+		PDWORD pINT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->OriginalFirstThunk, lpBuffer));
 		while (*pIAT)
 		{
 			//判断最高位
-			if (IMAGE_SNAP_BY_ORDINAL(*pIAT))
+			if (IMAGE_SNAP_BY_ORDINAL(*pINT))
 			{
-				printf("序号：0x%x \t地址：0x%x \n", *pIAT & 0xFFFF, *pIAT);
+				printf("序号：0x%x \t地址：0x%x \n", *pINT & 0xFFFF, *pINT);
 			}
 			else
 			{
-				PCHAR pName = (PCHAR)lpBuffer + RVAToOffset(*pIAT, lpBuffer) + sizeof(WORD);
-				printf("名称：%s \t 地址：0x%x\n", pName,*pIAT);
+				PCHAR pName = (PCHAR)lpBuffer + RVAToOffset(*pINT, lpBuffer) + sizeof(WORD);
+				printf("名称：%s \t 地址：0x%x\n", pName,*pINT);
 			}
 			pIAT += 1;
 			pINT += 1;
@@ -520,9 +520,20 @@ VOID CLoaderPE::PrintImportTable()
 	}
 }
 
+VOID CLoaderPE::PrintBoundImport()
+{
+	DWORD BoundBase = (DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].VirtualAddress,lpBuffer);
+	PIMAGE_BOUND_IMPORT_DESCRIPTOR pBoundImport = (PIMAGE_BOUND_IMPORT_DESCRIPTOR)BoundBase;
+	printf("%s\n", BoundBase + pBoundImport->OffsetModuleName);
+}
+
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 {
 	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
+	if (dwRva < GetSectionHeader()->VirtualAddress)
+	{
+		return dwRva;
+	}
 	for (int i = 0; i <= nSections; ++i)
 	{
 		if ((dwRva >= GetSectionHeader(i)->VirtualAddress) && (dwRva <= GetSectionHeader(i)->VirtualAddress + GetSectionHeader(i)->SizeOfRawData))
@@ -536,6 +547,10 @@ DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 DWORD CLoaderPE::OffsetToRVA(DWORD dwRva, PVOID pMapping)
 {
 	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
+	if (dwRva < GetSectionHeader()->PointerToRawData)
+	{
+		return dwRva;
+	}
 	for (int i = 0; i <= nSections; ++i)
 	{
 		if ((dwRva >= GetSectionHeader(i)->PointerToRawData) && (dwRva <= GetSectionHeader(i)->PointerToRawData + GetSectionHeader(i)->SizeOfRawData))

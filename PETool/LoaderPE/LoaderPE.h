@@ -19,6 +19,9 @@ private:
 	PIMAGE_EXPORT_DIRECTORY GetExportDir();
 	//获得重定位表
 	PIMAGE_BASE_RELOCATION GetBaseReloc(INT nIndex = 0);
+
+	DWORD RVAToOffset(DWORD dwRva, PVOID pMapping);
+	DWORD OffsetToRVA(DWORD dwRva, PVOID pMapping);
 public:
 	CLoaderPE();
 	CLoaderPE(LPCSTR lpFileName);
@@ -73,14 +76,8 @@ public:
 	VOID RepairBaseRrloc(DWORD addr);
 	//输出导入表
 	VOID PrintImportTable();
-/*
-	功能:虚拟内存相对地址和文件偏移的转换
-	参数：stRVA：    虚拟内存相对偏移地址
-		  lpFileBuf: 文件起始地址
-	返回：转换后的文件偏移地址
-*/
-	DWORD RVAToOffset(DWORD dwRva, PVOID pMapping);
-	DWORD OffsetToRVA(DWORD dwRva, PVOID pMapping);
+	//输出绑定导入表
+	VOID PrintBoundImport();
 	
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
