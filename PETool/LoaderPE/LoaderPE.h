@@ -26,10 +26,10 @@ public:
 	CLoaderPE();
 	CLoaderPE(LPCSTR lpFileName);
 	~CLoaderPE();
-	//获得dos头
-	PIMAGE_DOS_HEADER GetDosHeader();
 	//是否是PE头或者PE文件是否损坏
 	BOOL IsPeFile();
+	//获得dos头
+	PIMAGE_DOS_HEADER GetDosHeader();
 	//获得NT头
 	PIMAGE_NT_HEADERS GetNtHeader();
 	//获得PE头
@@ -38,6 +38,8 @@ public:
 	PIMAGE_OPTIONAL_HEADER GetOperHeader();
 	//获取单个节表;nIndex : 第几个节表
 	PIMAGE_SECTION_HEADER GetSectionHeader(int nIndex = 1);
+	//获得导入表
+	PIMAGE_IMPORT_DESCRIPTOR GetImportTable(INT nIndex = 0);
 	//硬盘拷贝到内存
 	BOOL FileBuffCopyInImageBuff();
 	//内存拷贝到硬盘
@@ -74,8 +76,6 @@ public:
 	WORD GetBaseRelocNum();
 	//修复重定位表
 	VOID RepairBaseRrloc(DWORD addr);
-	//获得导入表
-	PIMAGE_IMPORT_DESCRIPTOR GetImportTable(INT nIndex = 0);
 	//输出导入表
 	VOID PrintImportTable();
 	//输出绑定导入表
@@ -84,7 +84,10 @@ public:
 	INT GetImportTableNum();
 	//移动导入表到节; nIndex:第几个节
 	BOOL MoveImpotrTableForSection(INT nIndex = 0);
-	
+	//添加导入表
+	BOOL AddImportTable();
+	//导入表注入
+	BOOL InImportTable(PCHAR szDllName,PCHAR szFuncName);
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
 	LPVOID				lpImageBuffer;	//内存中的文件

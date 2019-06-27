@@ -564,6 +564,19 @@ BOOL CLoaderPE::MoveImpotrTableForSection(INT nIndex /*= 0*/)
 	return TRUE;
 }
 
+BOOL CLoaderPE::AddImportTable()
+{
+	PIMAGE_IMPORT_DESCRIPTOR pImport = GetImportTable();
+	INT nImportNum = GetImportTableNum();
+	memmove(pImport + nImportNum, pImport + nImportNum - 1, sizeof(IMAGE_IMPORT_DESCRIPTOR));
+	return TRUE;
+}
+
+BOOL CLoaderPE::InImportTable(PCHAR szDllName, PCHAR szFuncName)
+{
+
+}
+
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)
 {
 	WORD nSections = GetNtHeader()->FileHeader.NumberOfSections;
