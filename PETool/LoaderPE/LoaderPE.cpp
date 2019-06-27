@@ -543,8 +543,10 @@ INT CLoaderPE::GetImportTableNum()
 	return nIndex;
 }
 
-BOOL CLoaderPE::MoveImpotrTableForSection(INT nIndex /*= 0*/)
+BOOL CLoaderPE::MoveImpotrTableForSection()
 {
+	//随机一个节
+	INT nIndex = rand() % GetPeHeader()->NumberOfSections;
 	INT nSecSize = GetSectionNullSize(nIndex);
 	INT nImportSize = GetImportTableNum() * sizeof(IMAGE_IMPORT_DESCRIPTOR);
 	//如果该节的空白处小于所有导入表的大小
@@ -566,15 +568,49 @@ BOOL CLoaderPE::MoveImpotrTableForSection(INT nIndex /*= 0*/)
 
 BOOL CLoaderPE::AddImportTable()
 {
+	MoveImpotrTableForSection();
 	PIMAGE_IMPORT_DESCRIPTOR pImport = GetImportTable();
 	INT nImportNum = GetImportTableNum();
 	memmove(pImport + nImportNum, pImport + nImportNum - 1, sizeof(IMAGE_IMPORT_DESCRIPTOR));
 	return TRUE;
 }
 
-BOOL CLoaderPE::InImportTable(PCHAR szDllName, PCHAR szFuncName)
+BOOL CLoaderPE::InImportTable(LPCSTR szDllName, LPCSTR szFuncName)
 {
+	if (NULL == szDllName || szFuncName == NULL)
+	{
+		return FALSE;
+	}
+	AddImportTable();
+	PIMAGE_IMPORT_DESCRIPTOR updateImport = GetImportTable(GetImportTableNum() - 1);
+	//随机一个节，把需要修改的信息加进去
+	WORD nIndex = rand() % GetPeHeader()->NumberOfSections;
+	//或者这个节空白处的大小
+	INT nSecSize = GetSectionNullSize(nIndex);
+	//记录下空白处开始的偏移
+	DWORD dImportFOA = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - nSecSize;
 
+	//计入下要修改的首地址
+	PDWORD dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
+	//修改导入表的名字
+	memmove(dImportAddr, szDllName, strlen(szDllName));
+	updateImport->Name = OffsetToRVA(dImportFOA, lpBuffer);
+
+	//修改下偏移，记录函数名偏移，函数名在IMAGE_IMPORT_BY_NAME的第二个值，第一个值是WORD类型，所以加它的长度
+	dImportFOA += (strlen(szDllName) + sizeof(WORD) + 1);
+	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
+	memmove(dImportAddr, szFuncName, strlen(szFuncName));
+
+	//记录下名字表的地址
+	DWORD NameAddr = (DWORD)dImportAddr;
+	//记录下存储指向名称表的地址
+	dImportFOA += (strlen(szFuncName) + 1);
+	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
+	*dImportAddr = NameAddr;
+	//让IAT表和INT表都指向函数名的RVA首地址
+	updateImport->OriginalFirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
+	updateImport->FirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
+	return TRUE;
 }
 
 DWORD CLoaderPE::RVAToOffset(DWORD dwRva, PVOID pMapping)

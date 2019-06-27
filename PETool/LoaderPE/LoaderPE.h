@@ -83,11 +83,11 @@ public:
 	//获得导入表的个数
 	INT GetImportTableNum();
 	//移动导入表到节; nIndex:第几个节
-	BOOL MoveImpotrTableForSection(INT nIndex = 0);
+	BOOL MoveImpotrTableForSection();
 	//添加导入表
 	BOOL AddImportTable();
 	//导入表注入
-	BOOL InImportTable(PCHAR szDllName,PCHAR szFuncName);
+	BOOL InImportTable(LPCSTR szDllName, LPCSTR szFuncName);
 public:
 	LPVOID				lpBuffer;		//硬盘中的文件
 	LPVOID				lpImageBuffer;	//内存中的文件
