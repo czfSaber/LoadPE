@@ -15,6 +15,7 @@ CLoaderPE::CLoaderPE()
 	pImageFileHeader		= NULL;
 	pImageOperFileHeader	= NULL;
 	mSectionName.clear();
+	srand(time(NULL));    //每次调用时都重新设置种子了
 }
 
 CLoaderPE::CLoaderPE(LPCSTR lpFileName)
@@ -492,7 +493,7 @@ VOID CLoaderPE::RepairBaseRrloc(DWORD addr)
 
 PIMAGE_IMPORT_DESCRIPTOR CLoaderPE::GetImportTable(INT nIndex /*= 0*/)
 {
-	return (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer));
+	return (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)lpBuffer + RVAToOffset(GetOperHeader()->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress, lpBuffer)) + nIndex;
 }
 
 VOID CLoaderPE::PrintImportTable()
@@ -587,29 +588,39 @@ BOOL CLoaderPE::InImportTable(LPCSTR szDllName, LPCSTR szFuncName)
 	WORD nIndex = rand() % GetPeHeader()->NumberOfSections;
 	//或者这个节空白处的大小
 	INT nSecSize = GetSectionNullSize(nIndex);
-	//记录下空白处开始的偏移
-	DWORD dImportFOA = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - nSecSize;
+	//记录下空白处开始的偏移,加sizeof为了防止导入表也在该节中，给导入表留个结尾
+	DWORD dImportFOA = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - nSecSize + sizeof(WORD);
 
 	//计入下要修改的首地址
 	PDWORD dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
 	//修改导入表的名字
 	memmove(dImportAddr, szDllName, strlen(szDllName));
 	updateImport->Name = OffsetToRVA(dImportFOA, lpBuffer);
-
-	//修改下偏移，记录函数名偏移，函数名在IMAGE_IMPORT_BY_NAME的第二个值，第一个值是WORD类型，所以加它的长度
-	dImportFOA += (strlen(szDllName) + sizeof(WORD) + 1);
+	
+	//修改下偏移，记录函数名偏移，函数名在IMAGE_IMPORT_BY_NAME的第二个值，第一个值是WORD类型，为了以防地址出错，所以多加点长度
+	dImportFOA += (strlen(szDllName) + sizeof(WORD));
 	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
 	memmove(dImportAddr, szFuncName, strlen(szFuncName));
-
-	//记录下名字表的地址
-	DWORD NameAddr = (DWORD)dImportAddr;
-	//记录下存储指向名称表的地址
+	//函数名表的RVA
+	DWORD ImportRVA = OffsetToRVA(dImportFOA - sizeof(WORD), lpBuffer);
+	//存放名字表RVA的地方 INT
 	dImportFOA += (strlen(szFuncName) + 1);
 	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
-	*dImportAddr = NameAddr;
-	//让IAT表和INT表都指向函数名的RVA首地址
+	*dImportAddr  = ImportRVA;
+	
+	dImportFOA += sizeof(DWORD);
+	/*dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);*/
 	updateImport->OriginalFirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
-	updateImport->FirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
+	////记录下名字表的地址。因为这是个结构体，所以要加上结构体前面的大小
+	DWORD NameAddr = (DWORD)dImportAddr - sizeof(WORD);
+	////记录下存储指向名称表的地址
+	//dImportFOA += (strlen(szFuncName) + 1);
+	//dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
+	//*dImportAddr = NameAddr;
+	////让IAT表和INT表都指向名字表的RVA首地址
+	//updateImport->OriginalFirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
+	//updateImport->FirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
+	
 	return TRUE;
 }
 

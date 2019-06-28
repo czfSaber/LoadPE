@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <strsafe.h>
 #include <map>
+#include <ctime>
 using namespace std;
 
 /************************************************************************/
