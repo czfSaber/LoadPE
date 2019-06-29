@@ -504,10 +504,10 @@ VOID CLoaderPE::PrintImportTable()
 	{
 		printf("%s\n", (DWORD)lpBuffer + RVAToOffset((pImport + nIndex)->Name, lpBuffer));
 		//名称
-		PDWORD pIAT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->FirstThunk, lpBuffer));
+	//	PDWORD pIAT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->FirstThunk, lpBuffer));
 		//地址
 		PDWORD pINT = (PDWORD)(DWORD(lpBuffer) + RVAToOffset((pImport + nIndex)->OriginalFirstThunk, lpBuffer));
-		while (*pIAT)
+		while (*pINT)
 		{
 			//判断最高位
 			if (IMAGE_SNAP_BY_ORDINAL(*pINT))
@@ -519,7 +519,7 @@ VOID CLoaderPE::PrintImportTable()
 				PCHAR pName = (PCHAR)lpBuffer + RVAToOffset(*pINT, lpBuffer) + sizeof(WORD);
 				printf("名称：%s \t 地址：0x%x\n", pName,*pINT);
 			}
-			pIAT += 1;
+		//	pIAT += 1;
 			pINT += 1;
 		}
 		nIndex += 1;
@@ -547,12 +547,14 @@ INT CLoaderPE::GetImportTableNum()
 BOOL CLoaderPE::MoveImpotrTableForSection()
 {
 	//随机一个节
-	INT nIndex = rand() % GetPeHeader()->NumberOfSections;
+//ON:	INT nIndex = rand() % GetPeHeader()->NumberOfSections;
+	INT nIndex = GetPeHeader()->NumberOfSections - 1;
 	INT nSecSize = GetSectionNullSize(nIndex);
 	INT nImportSize = GetImportTableNum() * sizeof(IMAGE_IMPORT_DESCRIPTOR);
 	//如果该节的空白处小于所有导入表的大小
 	if (nSecSize < nImportSize + sizeof(IMAGE_IMPORT_DESCRIPTOR))
 	{
+		//goto ON;
 		return FALSE;
 	}
 	//记录下导入表的偏移
@@ -585,9 +587,14 @@ BOOL CLoaderPE::InImportTable(LPCSTR szDllName, LPCSTR szFuncName)
 	AddImportTable();
 	PIMAGE_IMPORT_DESCRIPTOR updateImport = GetImportTable(GetImportTableNum() - 1);
 	//随机一个节，把需要修改的信息加进去
-	WORD nIndex = rand() % GetPeHeader()->NumberOfSections;
+ON:	WORD nIndex = rand() % GetPeHeader()->NumberOfSections;
 	//或者这个节空白处的大小
-	INT nSecSize = GetSectionNullSize(nIndex);
+	INT nSecSize = GetSectionNullSize(2);
+	//判断剩余的空间可以可以能装下需要的东西
+	if (nSecSize < 128)
+	{
+		goto ON;
+	}
 	//记录下空白处开始的偏移,加sizeof为了防止导入表也在该节中，给导入表留个结尾
 	DWORD dImportFOA = GetSectionHeader(nIndex)->PointerToRawData + GetSectionHeader(nIndex)->SizeOfRawData - nSecSize + sizeof(WORD);
 
@@ -601,26 +608,18 @@ BOOL CLoaderPE::InImportTable(LPCSTR szDllName, LPCSTR szFuncName)
 	dImportFOA += (strlen(szDllName) + sizeof(WORD));
 	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
 	memmove(dImportAddr, szFuncName, strlen(szFuncName));
+	
 	//函数名表的RVA
-	DWORD ImportRVA = OffsetToRVA(dImportFOA - sizeof(WORD), lpBuffer);
+	DWORD funNameTabRVA = OffsetToRVA(dImportFOA - sizeof(WORD), lpBuffer);
 	//存放名字表RVA的地方 INT
-	dImportFOA += (strlen(szFuncName) + 1);
+	dImportFOA += (strlen(szFuncName) + sizeof(DWORD));
+	DWORD IntRva = OffsetToRVA(dImportFOA, lpBuffer);
 	dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
-	*dImportAddr  = ImportRVA;
+	*dImportAddr  = funNameTabRVA;
 	
-	dImportFOA += sizeof(DWORD);
-	/*dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);*/
-	updateImport->OriginalFirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
-	////记录下名字表的地址。因为这是个结构体，所以要加上结构体前面的大小
-	DWORD NameAddr = (DWORD)dImportAddr - sizeof(WORD);
-	////记录下存储指向名称表的地址
-	//dImportFOA += (strlen(szFuncName) + 1);
-	//dImportAddr = (PDWORD)((DWORD)lpBuffer + dImportFOA);
-	//*dImportAddr = NameAddr;
-	////让IAT表和INT表都指向名字表的RVA首地址
-	//updateImport->OriginalFirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
-	//updateImport->FirstThunk = OffsetToRVA(dImportFOA, lpBuffer);
-	
+	updateImport->OriginalFirstThunk = IntRva;
+	updateImport->FirstThunk = IntRva;
+
 	return TRUE;
 }
 
